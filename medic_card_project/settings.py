@@ -53,7 +53,7 @@ TEMPLATES = [
 UNFOLD = {
     # Последний пункт, необязателен. Будут доступны все темы для админ-панели
     "SITE_TITLE": "Медицинские карты",  # Заголовок в браузере
-    "SITE_HEADER": "Админ-панель",           # Заголовок в шапке
+    "SITE_HEADER": "Админ-панель",  # Заголовок в шапке
     # "SITE_ICON": "/static/logo.svg",         # Путь к логотипу (SVG/PNG)
     "THEME": "auto",  # "light", "dark" или "auto" (автоопределение)
 }
@@ -73,7 +73,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-SESSION_COOKIE_AGE = 1209600 # 14 дней
+SESSION_COOKIE_AGE = 1209600  # 14 дней
 
 LANGUAGE_CODE = "ru"
 
@@ -85,6 +85,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
