@@ -12,10 +12,17 @@
             position: fixed;
             top: 56px; /* Высота навбара */
             bottom: 0;
-            left: 0;
-            z-index: 100;
+            left: -250px; /* Скрыт по умолчанию на мобильных */
+            width: 250px;
+            z-index: 1000;
             padding: 48px 0 0;
             box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background-color: #f8f9fa;
+            transition: left 0.3s ease;
+        }
+        
+        .sidebar.show {
+            left: 0; /* Показать сайдбар */
         }
         
         .sidebar .nav-link {
@@ -52,15 +59,44 @@
         
         main {
             margin-left: 0;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .sidebar-overlay.show {
+            display: block;
         }
         
         @media (min-width: 768px) {
+            .sidebar {
+                left: 0; /* Всегда показан на планшетах и больше */
+                width: 16.66666667%;
+            }
+            
             main {
                 margin-left: 16.66666667%;
+            }
+            
+            .sidebar-overlay {
+                display: none !important; /* Скрыть оверлей на больших экранах */
             }
         }
         
         @media (min-width: 992px) {
+            .sidebar {
+                width: 16.66666667%;
+            }
+            
             main {
                 margin-left: 16.66666667%;
             }
@@ -70,31 +106,32 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'medic_card:home' %}">Медицинские Билеты</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+            <button class="btn btn-outline-light me-3 d-md-none" type="button" id="sidebarToggle">
+                <i class="bi bi-list"></i>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'medic_auth:logout' %}">Выход</a>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'medic_auth:login' %}">Вход</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'medic_auth:register' %}">Регистрация</a>
-                        </li>
-                    {% endif %}
-                </ul>
+            <a class="navbar-brand" href="{% url 'medic_card:home' %}">Медицинские Билеты</a>
+            <div class="navbar-nav ms-auto d-flex flex-row">
+                {% if user.is_authenticated %}
+                    <a class="nav-link me-2" href="{% url 'medic_auth:logout' %}">
+                        <i class="bi bi-box-arrow-right"></i> Выход
+                    </a>
+                {% else %}
+                    <a class="nav-link me-2" href="{% url 'medic_auth:login' %}">
+                        <i class="bi bi-box-arrow-in-right"></i> Вход
+                    </a>
+                    <a class="nav-link" href="{% url 'medic_auth:register' %}">
+                        <i class="bi bi-person-plus"></i> Регистрация
+                    </a>
+                {% endif %}
             </div>
         </div>
     </nav>
 
+    <!-- Оверлей для мобильных устройств -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Левый боковой бар -->
-    <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+    <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar" id="sidebar">
         <div class="position-sticky pt-3">
             <ul class="nav flex-column">
                 <li class="nav-item">
@@ -132,7 +169,7 @@
     </nav>
 
     <!-- Основной контент -->
-    <main class="col-md-9 mt-3 ms-sm-auto col-lg-10 px-md-4">
+    <main class="col-md-9 mt-3 ms-sm-auto col-lg-10 px-md-4 px-3">
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -145,6 +182,53 @@
         {% block content %}
         {% endblock %}
     </main>
+
+    <script>
+        // Управление сайдбаром на мобильных устройствах
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            
+            // Показать/скрыть сайдбар
+            function toggleSidebar() {
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            }
+            
+            // Скрыть сайдбар
+            function hideSidebar() {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+            }
+            
+            // Обработчики событий
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', toggleSidebar);
+            }
+            
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', hideSidebar);
+            }
+            
+            // Скрыть сайдбар при клике на ссылку (только на мобильных)
+            const sidebarLinks = sidebar.querySelectorAll('.nav-link');
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
+                        hideSidebar();
+                    }
+                });
+            });
+            
+            // Скрыть сайдбар при изменении размера окна
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768) {
+                    hideSidebar();
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>
