@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+
+                {% if user.is_authenticated %}
+                <p class="text-muted">Привет, {{ user.username }}!</p>
+                <a href="{% url 'medic_auth:logout' %}" class="btn btn-outline-danger">Выход</a>
+                {% endif %}
+
+                {% if not user.is_authenticated %}
+                <div class="row">
+                    <div class="col-md-6 text-center">
+                        <h1 class="card-title">Привет👋</h1>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <p class="card-text">Ты можешь зарегистрироваться или войти, чтобы отлеживать свой прогресс</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{% url 'medic_auth:login' %}" class="btn btn-primary">Вход</a>
+                            <a href="{% url 'medic_auth:register' %}" class="btn btn-outline-primary">Регистрация</a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

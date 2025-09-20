@@ -1,0 +1,6 @@
+Django==4.2.7
+django-crispy-forms==2.1
+crispy-bootstrap5==0.7
+black==23.11.0
+flake8==6.1.0
+isort==5.12.0
