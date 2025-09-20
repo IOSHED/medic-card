@@ -47,6 +47,14 @@ class Ticket(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок сортировки")
+    is_temporary = models.BooleanField(default=False, verbose_name="Временный билет")
+    original_ticket = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="Оригинальный билет",
+    )
 
     class Meta:
         verbose_name = "Билет"
@@ -58,6 +66,44 @@ class Ticket(models.Model):
 
     def get_questions_count(self):
         return self.questions.filter(is_active=True).count()
+
+    def create_errors_ticket(self, user, wrong_questions):
+        """Создает временный билет только с вопросами, на которые пользователь ответил неправильно"""
+        if not wrong_questions.exists():
+            return None
+
+        # Создаем временный билет
+        temp_ticket = Ticket.objects.create(
+            theme=self.theme,
+            title=f"{self.title} - Перерешивание ошибок",
+            description=f"Временный билет для перерешивания ошибок из билета '{self.title}'",
+            created_by=user,
+            is_active=True,
+            is_temporary=True,
+            original_ticket=self,
+        )
+
+        # Копируем только неправильные вопросы
+        for question in wrong_questions:
+            new_question = Question.objects.create(
+                ticket=temp_ticket,
+                text=question.text,
+                image=question.image,
+                created_by=user,
+                is_active=True,
+            )
+
+            # Копируем ответы
+            for answer in question.answers.filter(is_active=True):
+                Answer.objects.create(
+                    question=new_question,
+                    text=answer.text,
+                    is_correct=answer.is_correct,
+                    is_active=True,
+                    order=answer.order,
+                )
+
+        return temp_ticket
 
 
 class Question(models.Model):
@@ -144,3 +190,87 @@ class UserAnswer(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.question.text[:30]}..."
+
+
+class TicketProgress(models.Model):
+    """Модель для отслеживания прогресса прохождения билета пользователем"""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name="Пользователь"
+    )
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, verbose_name="Билет")
+    current_question_index = models.PositiveIntegerField(
+        default=0, verbose_name="Текущий вопрос (индекс)"
+    )
+    is_completed = models.BooleanField(default=False, verbose_name="Завершен")
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name="Начат")
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name="Завершен")
+    correct_answers = models.PositiveIntegerField(
+        default=0, verbose_name="Правильных ответов"
+    )
+    total_questions = models.PositiveIntegerField(
+        default=0, verbose_name="Всего вопросов"
+    )
+    time_spent = models.DurationField(
+        null=True, blank=True, verbose_name="Время выполнения"
+    )
+
+    class Meta:
+        verbose_name = "Прогресс билета"
+        verbose_name_plural = "Прогресс билетов"
+        unique_together = ["user", "ticket"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.ticket.title}"
+
+    def get_progress_percentage(self):
+        """Возвращает процент выполнения билета"""
+        if self.total_questions == 0:
+            return 0
+        return (self.current_question_index / self.total_questions) * 100
+
+    def get_current_question(self):
+        """Возвращает текущий вопрос"""
+        questions = self.ticket.questions.filter(is_active=True).order_by(
+            "order", "created_at"
+        )
+        if self.current_question_index < questions.count():
+            return questions[self.current_question_index]
+        return None
+
+    def get_remaining_questions(self):
+        """Возвращает количество оставшихся вопросов"""
+        return max(0, self.total_questions - self.current_question_index)
+
+    def calculate_time_spent(self):
+        """Вычисляет время выполнения"""
+        if self.completed_at and self.started_at:
+            self.time_spent = self.completed_at - self.started_at
+            self.save()
+
+    def get_current_time_spent(self):
+        """Возвращает текущее время выполнения (если билет еще не завершен)"""
+        if self.is_completed and self.time_spent:
+            return self.time_spent
+        elif self.started_at:
+            from django.utils import timezone
+
+            return timezone.now() - self.started_at
+        return None
+
+    def get_time_spent_display(self):
+        """Возвращает время выполнения в читаемом формате"""
+        time_spent = self.get_current_time_spent()
+        if time_spent:
+            total_seconds = int(time_spent.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+
+            if hours > 0:
+                return f"{hours}ч {minutes}м {seconds}с"
+            elif minutes > 0:
+                return f"{minutes}м {seconds}с"
+            else:
+                return f"{seconds}с"
+        return "Не завершен"

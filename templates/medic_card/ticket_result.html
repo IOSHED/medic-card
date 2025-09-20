@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Результаты билета{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:home' %}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:theme_detail' ticket.theme.id %}">{{ ticket.theme.title }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:ticket_detail' ticket.id %}">{{ ticket.title }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Результаты</li>
+            </ol>
+        </nav>
+
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                {% if accuracy >= 80 %}
+                    <i class="bi bi-trophy text-warning"></i> Отлично!
+                {% elif accuracy >= 60 %}
+                    <i class="bi bi-emoji-smile text-success"></i> Хорошо!
+                {% else %}
+                    <i class="bi bi-emoji-frown text-warning"></i> Попробуйте еще раз!
+                {% endif %}
+            </h1>
+            <h2 class="h4 text-muted">
+                {% if ticket.is_temporary %}
+                    <i class="bi bi-arrow-clockwise text-info"></i> {{ ticket.title }}
+                {% else %}
+                    {{ ticket.title }}
+                {% endif %}
+            </h2>
+            {% if ticket.is_temporary %}
+            <p class="text-muted small">Временный билет для перерешивания ошибок</p>
+            {% endif %}
+        </div>
+
+        <!-- Статистика -->
+        <div class="row mb-5">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle text-success display-4"></i>
+                        <h3 class="mt-2">{{ progress.correct_answers }}</h3>
+                        <p class="text-muted mb-0">Правильных ответов</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="bi bi-x-circle text-danger display-4"></i>
+                        <h3 class="mt-2">{{ wrong_answers_count }}</h3>
+                        <p class="text-muted mb-0">Неправильных ответов</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="bi bi-percent text-primary display-4"></i>
+                        <h3 class="mt-2">{{ accuracy|floatformat:1 }}%</h3>
+                        <p class="text-muted mb-0">Точность</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="bi bi-clock text-info display-4"></i>
+                        <h3 class="mt-2">{{ progress.get_time_spent_display }}</h3>
+                        <p class="text-muted mb-0">Время выполнения</p>
+                        {% if progress.started_at and progress.completed_at %}
+                        <small class="text-muted">
+                            {{ progress.started_at|date:"H:i" }} - {{ progress.completed_at|date:"H:i" }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Детальная статистика -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Детальные результаты</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if user_answers %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Вопрос</th>
+                                        <th>Ваш ответ</th>
+<!--                                        <th>Результат</th>-->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user_answer in user_answers %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-secondary me-2">{{ forloop.counter }}</span>
+                                                <span>{{ user_answer.question.text|truncatewords:10 }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% for answer in user_answer.selected_answers.all %}
+
+                                                {% if user_answer.is_correct %}
+                                                <span class="badge bg-success">
+                                                        <i class="bi bi-check"></i>{{ answer.text|truncatewords:3 }}
+                                                    </span>
+                                                {% else %}
+                                                <span class="badge bg-danger">
+                                                        <i class="bi bi-x"></i>{{ answer.text|truncatewords:3 }}
+                                                </span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-exclamation-circle display-4 text-muted"></i>
+                            <p class="text-muted mt-2">Нет данных о прохождении</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Действия</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'medic_card:home' %}" class="btn btn-primary">
+                                <i class="bi bi-house"></i> На главную
+                            </a>
+                            
+                            <a href="{% url 'medic_card:retake_ticket' ticket.id 'all' %}" class="btn btn-outline-primary">
+                                <i class="bi bi-arrow-clockwise"></i> Перерешать билет
+                            </a>
+                            
+                            {% if wrong_answers %}
+                            <a href="{% url 'medic_card:retake_ticket' ticket.id 'errors' %}" class="btn btn-outline-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Перерешать ошибки
+                            </a>
+                            {% endif %}
+                            
+                            <a href="{% url 'medic_card:ticket_detail' ticket.id %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-list"></i> К билету
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

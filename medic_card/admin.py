@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Answer, Question, Theme, Ticket, UserAnswer
+from .models import Answer, Question, Theme, Ticket, TicketProgress, UserAnswer
 
 
 class AnswerInline(admin.TabularInline):
@@ -38,9 +38,10 @@ class TicketAdmin(admin.ModelAdmin):
         "created_by",
         "created_at",
         "is_active",
+        "is_temporary",
         "questions_count",
     ]
-    list_filter = ["is_active", "created_at", "theme", "created_by"]
+    list_filter = ["is_active", "is_temporary", "created_at", "theme", "created_by"]
     search_fields = ["title", "description", "theme__title"]
     readonly_fields = ["created_at"]
     inlines = [QuestionInline]
@@ -115,3 +116,25 @@ class UserAnswerAdmin(admin.ModelAdmin):
         )
 
     question_preview.short_description = "Вопрос"
+
+
+@admin.register(TicketProgress)
+class TicketProgressAdmin(admin.ModelAdmin):
+    list_display = [
+        "user",
+        "ticket",
+        "current_question_index",
+        "is_completed",
+        "correct_answers",
+        "total_questions",
+        "progress_percentage",
+        "started_at",
+    ]
+    list_filter = ["is_completed", "started_at", "ticket__theme"]
+    search_fields = ["user__username", "ticket__title"]
+    readonly_fields = ["started_at", "completed_at", "time_spent"]
+
+    def progress_percentage(self, obj):
+        return f"{obj.get_progress_percentage():.1f}%"
+
+    progress_percentage.short_description = "Прогресс"

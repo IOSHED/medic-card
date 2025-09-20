@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Вопрос {{ question_index|add:1 }} из {{ total_questions }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:home' %}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:theme_detail' ticket.theme.id %}">{{ ticket.theme.title }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:ticket_detail' ticket.id %}">{{ ticket.title }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Вопрос {{ question_index|add:1 }}</li>
+            </ol>
+        </nav>
+
+        <!-- Прогресс-бар -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Прогресс: {{ question_index|add:1 }} из {{ total_questions }}</h5>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-primary">{{ progress.get_progress_percentage|floatformat:1 }}%</span>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-clock me-1"></i>
+                            <span id="timer" class="fw-bold text-primary">00:00:00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ progress.get_progress_percentage }}%" 
+                         aria-valuenow="{{ progress.get_progress_percentage }}" 
+                         aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                
+                <!-- Навигация по вопросам -->
+                <div class="mt-3">
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for i in total_questions|make_list %}
+                            {% if forloop.counter0 == question_index %}
+                                <span class="badge bg-primary">{{ forloop.counter }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ forloop.counter }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вопрос -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title mb-4">
+                    Вопрос {{ question_index|add:1 }} из {{ total_questions }}
+                </h4>
+                
+                <div class="mb-4">
+                    <h5>{{ question.text }}</h5>
+                </div>
+                
+                {% if question.image %}
+                <div class="mb-4 text-center">
+                    <img src="{{ question.image.url }}" alt="Изображение к вопросу" class="img-fluid rounded" style="max-height: 400px;">
+                </div>
+                {% endif %}
+
+                {% if not show_result %}
+                <!-- Форма для ответа -->
+                <form method="post" action="{% url 'medic_card:submit_answer' ticket.id question_index %}">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <h6>Выберите правильные ответы:</h6>
+                        <div class="list-group">
+                            {% for answer in answers %}
+                            <label class="list-group-item d-flex align-items-center">
+                                <input class="form-check-input me-3" type="checkbox" 
+                                       name="answers" value="{{ answer.id }}" 
+                                       id="answer_{{ answer.id }}">
+                                <div class="flex-grow-1">
+                                    <span class="me-2">{{ forloop.counter }}.</span>
+                                    {{ answer.text }}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'medic_card:ticket_detail' ticket.id %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Назад к билету
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Ответить
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <!-- Результат ответа -->
+
+                <div class="mb-4">
+                    <h6>Правильные ответы:</h6>
+                    <div class="list-group">
+                        {% for answer in question.get_correct_answers %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ forloop.counter }}. {{ answer.text }}</span>
+                            <span class="badge bg-success">Правильный</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6>Ваш ответ:</h6>
+                    <div class="list-group">
+                        {% for answer in user_answer.selected_answers.all %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ forloop.counter }}. {{ answer.text }}</span>
+                            {% if answer.is_correct %}
+                            <span class="badge bg-success">Правильный</span>
+                            {% else %}
+                            <span class="badge bg-danger">Неправильный</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3">
+                    <a href="{% url 'medic_card:ticket_detail' ticket.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Назад к билету
+                    </a>
+                    {% if question_index|add:1 < total_questions %}
+                    <a href="{% url 'medic_card:next_question' ticket.id question_index %}" class="btn btn-primary">
+                        <i class="bi bi-arrow-right"></i> Следующий вопрос
+                    </a>
+                    {% else %}
+                    <a href="{% url 'medic_card:ticket_result' ticket.id %}" class="btn btn-success">
+                        <i class="bi bi-trophy"></i> Завершить билет
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="alert {% if user_answer.is_correct %}alert-success{% else %}alert-danger{% endif %} mb-4">
+                    <h6 class="alert-heading">
+                        {% if user_answer.is_correct %}
+                            <i class="bi bi-check-circle"></i> Правильно!
+                        {% else %}
+                            <i class="bi bi-x-circle"></i> Неправильно
+                        {% endif %}
+                    </h6>
+                    {% if user_answer.is_correct %}
+                        Отличная работа! Вы правильно ответили на этот вопрос.
+                    {% else %}
+                        К сожалению, ваш ответ неверный. Изучите правильные варианты выше.
+                    {% endif %}
+                </div>
+
+
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Получаем время начала из сервера
+    const startTime = new Date('{{ progress.started_at|date:"c" }}');
+    
+    function updateTimer() {
+        const now = new Date();
+        const elapsed = Math.max(0, now - startTime); // Убеждаемся, что время не отрицательное
+        
+        const hours = Math.floor(elapsed / 3600000);
+        const minutes = Math.floor((elapsed % 3600000) / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        
+        const timerElement = document.getElementById('timer');
+        if (timerElement) {
+            timerElement.textContent = 
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+        }
+    }
+    
+    // Обновляем таймер каждую секунду
+    updateTimer();
+    setInterval(updateTimer, 1000);
+    
+    // Обновляем таймер при фокусе на странице (на случай, если пользователь переключил вкладку)
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            updateTimer();
+        }
+    });
+});
+</script>
+{% endblock %}

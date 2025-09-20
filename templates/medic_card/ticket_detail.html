@@ -22,7 +22,13 @@
                 <p class="text-muted mt-2">{{ ticket.description }}</p>
                 {% endif %}
             </div>
-
+            {% if user.is_authenticated %}
+            <div class="text-end">
+                <a href="{% url 'medic_card:start_ticket' ticket.id %}" class="btn btn-success btn-lg">
+                    <i class="bi bi-play-circle"></i> Начать билет
+                </a>
+            </div>
+            {% endif %}
         </div>
 
         <h2 class="h4 mb-4">Вопросы в билете</h2>
