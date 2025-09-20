@@ -135,13 +135,14 @@
         <div class="position-sticky pt-3">
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link active" href="{% url 'medic_card:home' %}">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
+                       href="{% url 'medic_card:home' %}">
                         <i class="bi bi-house-door"></i>
                         Главная
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if not user.is_authenticated %}disabled-link{% endif %}" 
+                    <a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %} {% if not user.is_authenticated %}disabled-link{% endif %}" 
                        href="{% if user.is_authenticated %}{% url 'medic_auth:profile' %}{% else %}javascript:void(0){% endif %}" 
                        data-auth-required="true">
                         <i class="bi bi-person-circle"></i>
