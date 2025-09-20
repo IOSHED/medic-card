@@ -9,6 +9,7 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -49,6 +50,14 @@ TEMPLATES = [
     },
 ]
 
+UNFOLD = {
+    # Последний пункт, необязателен. Будут доступны все темы для админ-панели
+    "SITE_TITLE": "Медицинские карты",  # Заголовок в браузере
+    "SITE_HEADER": "Админ-панель",           # Заголовок в шапке
+    # "SITE_ICON": "/static/logo.svg",         # Путь к логотипу (SVG/PNG)
+    "THEME": "auto",  # "light", "dark" или "auto" (автоопределение)
+}
+
 WSGI_APPLICATION = "medic_card_project.wsgi.application"
 
 DATABASES = {
@@ -66,9 +75,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 SESSION_COOKIE_AGE = 1209600 # 14 дней
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "ru"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Moscow"
 
 USE_I18N = True
 
