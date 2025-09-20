@@ -32,4 +32,7 @@ urlpatterns = [
         views.retake_ticket,
         name="retake_ticket",
     ),
+    # Избранное
+    path("favorites/", views.favorites_list, name="favorites"),
+    path("toggle-favorite/", views.toggle_favorite, name="toggle_favorite"),
 ]

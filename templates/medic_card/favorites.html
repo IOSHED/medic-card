@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load favorites_tags %}
+
+{% block title %}Избранное{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:home' %}">Главная</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Избранное</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-heart-fill text-danger"></i> Избранное
+            </h1>
+            <small class="text-muted">{{ all_items|length }} элементов</small>
+        </div>
+
+        {% if all_items %}
+        <div class="row">
+            {% for item in all_items %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column position-relative">
+                        <!-- Иконка звездочки -->
+                        <button class="btn btn-link p-0 position-absolute top-0 end-0 me-2 mt-2 favorite-btn" 
+                                data-content-type-id="{{ item.object|content_type_id }}" 
+                                data-object-id="{{ item.object.id }}"
+                                title="Удалить из избранного">
+                            <i class="bi bi-star-fill text-warning fs-5"></i>
+                        </button>
+
+                        <!-- Заголовок и тип -->
+                        <div class="mb-2">
+                            {% if item.type == 'theme' %}
+                                <span class="badge bg-primary mb-2">
+                                    <i class="bi bi-folder"></i> Тема
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success mb-2">
+                                    <i class="bi bi-ticket-perforated"></i> Билет
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <h5 class="card-title">{{ item.object.title }}</h5>
+                        
+                        {% if item.object.description %}
+                        <p class="card-text text-muted flex-grow-1">{{ item.object.description|truncatewords:20 }}</p>
+                        {% endif %}
+
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <small class="text-muted">
+                                    {% if item.type == 'theme' %}
+                                        <i class="bi bi-ticket-perforated"></i> {{ item.object.get_tickets_count }} билетов
+                                    {% else %}
+                                        <i class="bi bi-question-circle"></i> {{ item.object.get_questions_count }} вопросов
+                                    {% endif %}
+                                </small>
+                                <small class="text-muted">{{ item.added_at|date:"d.m.Y H:i" }}</small>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                {% if item.type == 'theme' %}
+                                    <a href="{% url 'medic_card:theme_detail' item.object.id %}" class="btn btn-primary">
+                                        <i class="bi bi-folder-open"></i> Открыть тему
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'medic_card:ticket_detail' item.object.id %}" class="btn btn-success">
+                                        <i class="bi bi-play-circle"></i> Начать билет
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="card">
+                <div class="card-body">
+                    <i class="bi bi-heart display-1 text-muted"></i>
+                    <h4 class="mt-3">Избранное пусто</h4>
+                    <p class="text-muted">Добавьте темы и билеты в избранное, нажав на звездочку</p>
+                    <a href="{% url 'medic_card:home' %}" class="btn btn-primary">
+                        <i class="bi bi-house-door"></i> Перейти к темам
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const favoriteButtons = document.querySelectorAll('.favorite-btn');
+    
+    favoriteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const contentTypeId = this.dataset.contentTypeId;
+            const objectId = this.dataset.objectId;
+            
+            fetch('{% url "medic_card:toggle_favorite" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: `content_type_id=${contentTypeId}&object_id=${objectId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Удаляем карточку из DOM
+                    this.closest('.col-md-6').remove();
+                    
+                    // Показываем уведомление
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-info alert-dismissible fade show';
+                    alert.innerHTML = `
+                        ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.col-12').insertBefore(alert, document.querySelector('.col-12').firstChild);
+                    
+                    // Проверяем, остались ли элементы
+                    const remainingItems = document.querySelectorAll('.col-md-6');
+                    if (remainingItems.length === 0) {
+                        location.reload(); // Перезагружаем страницу для показа пустого состояния
+                    }
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при обновлении избранного');
+            });
+        });
+    });
+});
+</script>
+
+<!-- CSRF токен для AJAX запросов -->
+{% csrf_token %}
+{% endblock %}

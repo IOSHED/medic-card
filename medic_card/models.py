@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
@@ -274,3 +276,52 @@ class TicketProgress(models.Model):
             else:
                 return f"{seconds}с"
         return "Не завершен"
+
+
+class Favorites(models.Model):
+    """Модель для хранения избранных тем и билетов"""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name="Пользователь"
+    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+    added_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата добавления")
+
+    class Meta:
+        verbose_name = "Избранное"
+        verbose_name_plural = "Избранное"
+        unique_together = ["user", "content_type", "object_id"]
+        ordering = ["-added_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.content_object}"
+
+    @classmethod
+    def is_favorite(cls, user, obj):
+        """Проверяет, добавлен ли объект в избранное"""
+        if not user.is_authenticated:
+            return False
+        return cls.objects.filter(
+            user=user,
+            content_type=ContentType.objects.get_for_model(obj),
+            object_id=obj.id,
+        ).exists()
+
+    @classmethod
+    def toggle_favorite(cls, user, obj):
+        """Добавляет или удаляет объект из избранного"""
+        if not user.is_authenticated:
+            return False, "Необходима авторизация"
+
+        content_type = ContentType.objects.get_for_model(obj)
+        favorite, created = cls.objects.get_or_create(
+            user=user, content_type=content_type, object_id=obj.id
+        )
+
+        if not created:
+            favorite.delete()
+            return False, "Удалено из избранного"
+        else:
+            return True, "Добавлено в избранное"

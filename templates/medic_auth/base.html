@@ -13,7 +13,10 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'medic_card:home' %}">Медицинские Билеты</a>
+            <a class="navbar-brand" href="{% url 'medic_card:home' %}">
+                <img src="{% static 'icon/main.png' %}" alt="Logo" width="32" height="32">
+                Медицинские Билеты
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>

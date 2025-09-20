@@ -1,11 +1,22 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.contenttypes.models import ContentType
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
 from medic_auth.models import UserProfile
 
-from .models import Answer, Question, Theme, Ticket, TicketProgress, UserAnswer
+from .models import (
+    Answer,
+    Favorites,
+    Question,
+    Theme,
+    Ticket,
+    TicketProgress,
+    UserAnswer,
+)
 
 
 def update_user_profile(user, progress):
@@ -399,3 +410,65 @@ def question_detail(request, question_id):
     answers = question.answers.filter(is_active=True).order_by("order", "id")
     context = {"question": question, "answers": answers}
     return render(request, "medic_card/question_detail.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_favorite(request):
+    """AJAX-обработчик для добавления/удаления из избранного"""
+    try:
+        content_type_id = request.POST.get("content_type_id")
+        object_id = request.POST.get("object_id")
+
+        if not content_type_id or not object_id:
+            return JsonResponse({"success": False, "message": "Неверные параметры"})
+
+        content_type = ContentType.objects.get(id=content_type_id)
+        model_class = content_type.model_class()
+        obj = get_object_or_404(model_class, id=object_id)
+
+        is_favorite, message = Favorites.toggle_favorite(request.user, obj)
+
+        return JsonResponse(
+            {"success": True, "is_favorite": is_favorite, "message": message}
+        )
+
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)})
+
+
+@login_required
+def favorites_list(request):
+    """Страница избранного"""
+    favorites = Favorites.objects.filter(user=request.user).prefetch_related(
+        "content_object"
+    )
+
+    # Разделяем на темы и билеты
+    themes = []
+    tickets = []
+
+    for favorite in favorites:
+        if isinstance(favorite.content_object, Theme):
+            themes.append(favorite.content_object)
+        elif isinstance(favorite.content_object, Ticket):
+            tickets.append(favorite.content_object)
+
+    # Объединяем и сортируем по времени добавления
+    all_items = []
+    for favorite in favorites:
+        all_items.append(
+            {
+                "object": favorite.content_object,
+                "added_at": favorite.added_at,
+                "type": "theme"
+                if isinstance(favorite.content_object, Theme)
+                else "ticket",
+            }
+        )
+
+    # Сортируем по времени добавления (от новых к старым)
+    all_items.sort(key=lambda x: x["added_at"], reverse=True)
+
+    context = {"all_items": all_items, "themes": themes, "tickets": tickets}
+    return render(request, "medic_card/favorites.html", context)

@@ -111,7 +111,10 @@
             <button class="btn btn-outline-light me-3 d-md-none" type="button" id="sidebarToggle">
                 <i class="bi bi-list"></i>
             </button>
-            <a class="navbar-brand" href="{% url 'medic_card:home' %}">Медицинские Билеты</a>
+            <a class="navbar-brand" href="{% url 'medic_card:home' %}">
+                <img src="{% static 'icon/main.png' %}" alt="Logo" width="32" height="32" class="">
+                Медицинские Билеты
+            </a>
             <div class="navbar-nav ms-auto d-flex flex-row">
                 {% if user.is_authenticated %}
                     <a class="nav-link me-2" href="{% url 'medic_auth:logout' %}">
@@ -160,8 +163,8 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if not user.is_authenticated %}disabled-link{% endif %}" 
-                       href="{% if user.is_authenticated %}#{% else %}javascript:void(0){% endif %}" 
+                    <a class="nav-link {% if request.resolver_match.url_name == 'favorites' %}active{% endif %} {% if not user.is_authenticated %}disabled-link{% endif %}" 
+                       href="{% if user.is_authenticated %}{% url 'medic_card:favorites' %}{% else %}javascript:void(0){% endif %}" 
                        data-auth-required="true">
                         <i class="bi bi-heart"></i>
                         Избранное
