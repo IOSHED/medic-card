@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="bi bi-person-circle"></i>
+                Личный кабинет
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Статистика пользователя -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up"></i>
+                        Ваша статистика
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center p-3 bg-primary text-white rounded">
+                                <h3 class="mb-1">{{ user_profile.tickets_solved }}</h3>
+                                <p class="mb-0">Решено билетов</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center p-3 bg-danger text-white rounded">
+                                <h3 class="mb-1">{{ user_profile.mistakes_made }}</h3>
+                                <p class="mb-0">Совершено ошибок</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center p-3 bg-success text-white rounded">
+                                <h3 class="mb-1">{{ user_profile.correct_answers }}</h3>
+                                <p class="mb-0">Правильных ответов</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if user_profile.last_activity %}
+                    <div class="mt-3">
+                        <h6>Последняя активность:</h6>
+                        <p class="text-muted">
+                            <i class="bi bi-clock"></i>
+                            {{ user_profile.last_activity|date:"d.m.Y в H:i" }}
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="mt-3">
+                        <p class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Пока нет активности
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Информация о пользователе -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person"></i>
+                        Информация о пользователе
+                    </h5>
+                </div>
+                 <div class="card-body">
+                     <p><strong>Имя пользователя:</strong> {{ user.username }}</p>
+                     <p><strong>Фраза-подсказка:</strong> 
+                         <span class="text-muted font-monospace">{{ user_profile.get_masked_password_hint }}</span>
+                     </p>
+                     <p><strong>Дата регистрации:</strong> {{ user.date_joined|date:"d.m.Y" }}</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Изменение пароля -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-key"></i>
+                        Изменение пароля
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'medic_auth:change_password' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ password_form.old_password.id_for_label }}" class="form-label">
+                                {{ password_form.old_password.label }}
+                            </label>
+                            {{ password_form.old_password }}
+                            {% if password_form.old_password.errors %}
+                                <div class="text-danger">
+                                    {% for error in password_form.old_password.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ password_form.new_password1.id_for_label }}" class="form-label">
+                                {{ password_form.new_password1.label }}
+                            </label>
+                            {{ password_form.new_password1 }}
+                            {% if password_form.new_password1.help_text %}
+                                <div class="form-text">{{ password_form.new_password1.help_text }}</div>
+                            {% endif %}
+                            {% if password_form.new_password1.errors %}
+                                <div class="text-danger">
+                                    {% for error in password_form.new_password1.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ password_form.new_password2.id_for_label }}" class="form-label">
+                                {{ password_form.new_password2.label }}
+                            </label>
+                            {{ password_form.new_password2 }}
+                            {% if password_form.new_password2.errors %}
+                                <div class="text-danger">
+                                    {% for error in password_form.new_password2.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i>
+                            Изменить пароль
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Изменение фразы-подсказки -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightbulb"></i>
+                        Фраза-подсказка
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'medic_auth:change_password_hint' %}">
+                        {% csrf_token %}
+                         <div class="mb-3">
+                             <label for="{{ hint_form.password_hint.id_for_label }}" class="form-label">
+                                 {{ hint_form.password_hint.label }}
+                             </label>
+                             {{ hint_form.password_hint }}
+                             <div class="form-text">
+                                 <small class="text-info">
+                                     <i class="bi bi-info-circle"></i>
+                                     Текущая подсказка: <span class="font-monospace">{{ user_profile.get_masked_password_hint }}</span>
+                                 </small>
+                             </div>
+                             {% if hint_form.password_hint.help_text %}
+                                 <div class="form-text">{{ hint_form.password_hint.help_text }}</div>
+                             {% endif %}
+                             {% if hint_form.password_hint.errors %}
+                                 <div class="text-danger">
+                                     {% for error in hint_form.password_hint.errors %}
+                                         <small>{{ error }}</small>
+                                     {% endfor %}
+                                 </div>
+                             {% endif %}
+                         </div>
+                        
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-circle"></i>
+                            Обновить подсказку
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

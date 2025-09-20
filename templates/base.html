@@ -105,7 +105,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if not user.is_authenticated %}disabled-link{% endif %}" 
-                       href="{% if user.is_authenticated %}#{% else %}javascript:void(0){% endif %}" 
+                       href="{% if user.is_authenticated %}{% url 'medic_auth:profile' %}{% else %}javascript:void(0){% endif %}" 
                        data-auth-required="true">
                         <i class="bi bi-person-circle"></i>
                         Личный кабинет

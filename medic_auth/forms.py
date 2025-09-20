@@ -1,5 +1,9 @@
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordChangeForm,
+    UserCreationForm,
+)
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
@@ -23,7 +27,7 @@ class CustomUserCreationForm(UserCreationForm):
         max_length=150,
         help_text=(
             "Обязательно. Не более 150 символов. "
-            "Только буквы, цифры и символы @/./+/-/_."
+            "Только буквы, цифры и символы: @.+-_."
         ),
         error_messages={
             "required": "Это поле обязательно для заполнения",
@@ -111,3 +115,43 @@ class CustomAuthenticationForm(AuthenticationForm):
         "invalid_login": "Пожалуйста, введите правильные имя пользователя и пароль.",
         "inactive": "Этот аккаунт неактивен.",
     }
+
+
+class CustomPasswordChangeForm(PasswordChangeForm):
+    old_password = forms.CharField(
+        label="Текущий пароль",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+    )
+    new_password1 = forms.CharField(
+        label="Новый пароль",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+        help_text="Пароль должен содержать минимум 4 символа и 1 цифру",
+    )
+    new_password2 = forms.CharField(
+        label="Подтверждение нового пароля",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+    )
+
+    def clean_new_password1(self):
+        password1 = self.cleaned_data.get("new_password1")
+        validator = CustomPasswordValidator()
+        validator.validate(password1)
+        return password1
+
+
+class PasswordHintChangeForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ["password_hint"]
+        labels = {
+            "password_hint": "Фраза-подсказка",
+        }
+        help_texts = {
+            "password_hint": "Подсказка поможет вспомнить пароль. ⚠️ ВНИМАНИЕ: Подсказка будет показана после 3 неудачных попыток входа, поэтому не указывайте в ней сам пароль!",
+        }
+        widgets = {
+            "password_hint": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }

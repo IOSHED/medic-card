@@ -1,9 +1,15 @@
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import redirect, render
 
-from .forms import CustomAuthenticationForm, CustomUserCreationForm
+from .forms import (
+    CustomAuthenticationForm,
+    CustomPasswordChangeForm,
+    CustomUserCreationForm,
+    PasswordHintChangeForm,
+)
 from .models import UserProfile
 
 
@@ -60,3 +66,65 @@ def user_logout(request):
     logout(request)
     messages.info(request, "Вы вышли из системы.")
     return redirect("medic_card:home")
+
+
+@login_required
+def profile(request):
+    """Личный кабинет пользователя"""
+    try:
+        user_profile = request.user.userprofile
+    except UserProfile.DoesNotExist:
+        user_profile = UserProfile.objects.create(user=request.user)
+
+    # Формы для изменения данных
+    password_form = CustomPasswordChangeForm(user=request.user)
+    # Создаем форму с пустым полем для фразы-подсказки
+    hint_form = PasswordHintChangeForm(initial={"password_hint": ""})
+
+    context = {
+        "user_profile": user_profile,
+        "password_form": password_form,
+        "hint_form": hint_form,
+    }
+
+    return render(request, "medic_auth/profile.html", context)
+
+
+@login_required
+def change_password(request):
+    """Изменение пароля"""
+    if request.method == "POST":
+        form = CustomPasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, form.user)
+            messages.success(request, "Пароль успешно изменен!")
+            return redirect("medic_auth:profile")
+        else:
+            messages.error(
+                request, "Ошибка при изменении пароля. Проверьте введенные данные."
+            )
+    else:
+        form = CustomPasswordChangeForm(user=request.user)
+
+    return redirect("medic_auth:profile")
+
+
+@login_required
+def change_password_hint(request):
+    """Изменение фразы-подсказки"""
+    if request.method == "POST":
+        try:
+            user_profile = request.user.userprofile
+        except UserProfile.DoesNotExist:
+            user_profile = UserProfile.objects.create(user=request.user)
+
+        form = PasswordHintChangeForm(request.POST, instance=user_profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Фраза-подсказка успешно обновлена!")
+            return redirect("medic_auth:profile")
+        else:
+            messages.error(request, "Ошибка при обновлении фразы-подсказки.")
+
+    return redirect("medic_auth:profile")
