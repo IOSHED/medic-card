@@ -3,6 +3,7 @@ from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import redirect, render
+from django_ratelimit.decorators import ratelimit
 
 from .forms import (
     CustomAuthenticationForm,
@@ -13,6 +14,7 @@ from .forms import (
 from .models import UserProfile
 
 
+@ratelimit(key='ip', rate='100/h')
 def register(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
@@ -26,6 +28,7 @@ def register(request):
     return render(request, "medic_auth/register.html", {"form": form})
 
 
+@ratelimit(key='ip', rate='100/h')
 def user_login(request):
     if request.method == "POST":
         form = CustomAuthenticationForm(request, data=request.POST)
@@ -61,13 +64,13 @@ def user_login(request):
         form = CustomAuthenticationForm()
     return render(request, "medic_auth/login.html", {"form": form})
 
-
+@ratelimit(key='ip', rate='100/h')
 def user_logout(request):
     logout(request)
     messages.info(request, "Вы вышли из системы.")
     return redirect("medic_card:home")
 
-
+@ratelimit(key='ip', rate='100/h')
 @login_required
 def profile(request):
     """Личный кабинет пользователя"""
@@ -89,7 +92,7 @@ def profile(request):
 
     return render(request, "medic_auth/profile.html", context)
 
-
+@ratelimit(key='ip', rate='100/h')
 @login_required
 def change_password(request):
     """Изменение пароля"""
@@ -109,7 +112,7 @@ def change_password(request):
 
     return redirect("medic_auth:profile")
 
-
+@ratelimit(key='ip', rate='100/h')
 @login_required
 def change_password_hint(request):
     """Изменение фразы-подсказки"""

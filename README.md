@@ -1,6 +1,6 @@
 # Medic Card
 
-1ч + 3ч 
+1ч + 3ч + 1ч
 A minimal Django application for medical information management.
 
 ## Features

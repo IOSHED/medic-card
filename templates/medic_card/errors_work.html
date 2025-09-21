@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load favorites_tags %}
+
+{% block title %}Работа над ошибками{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:home' %}">Главная</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Работа над ошибками</li>
+            </ol>
+        </nav>
+
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                <i class="bi bi-exclamation-triangle text-warning"></i>
+                Работа над ошибками
+            </h1>
+            <p class="lead text-muted">
+                Повторите вопросы, на которые вы ответили неправильно
+            </p>
+        </div>
+
+        <!-- Сообщения -->
+        {% if messages %}
+        <div class="row mb-4">
+            <div class="col-12">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'info' %}info-circle{% else %}exclamation-triangle{% endif %}"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if current_errors_count > 0 %}
+        <!-- Статистика ошибок -->
+        <div class="row mb-5">
+            <div class="col-md-4 mb-3">
+                <div class="card text-center h-100 border-warning">
+                    <div class="card-body">
+                        <i class="bi bi-x-circle text-danger display-4"></i>
+                        <h3 class="mt-2">{{ total_errors }}</h3>
+                        <p class="text-muted mb-0">Всего ошибок</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center h-100 border-info">
+                    <div class="card-body">
+                        <i class="bi bi-collection text-info display-4"></i>
+                        <h3 class="mt-2">{{ errors_by_theme|length }}</h3>
+                        <p class="text-muted mb-0">Тем с ошибками</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center h-100 border-success">
+                    <div class="card-body">
+                        <i class="bi bi-arrow-clockwise text-success display-4"></i>
+                        <h3 class="mt-2">1</h3>
+                        <p class="text-muted mb-0">Количество перерешиваний</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопка создания временного билета -->
+        <div class="text-center mb-5">
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning btn-lg">
+                    <i class="bi bi-play-circle"></i>
+                    Начать работу над ошибками
+                </button>
+            </form>
+        </div>
+
+        <!-- Детальный список ошибок по темам -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul"></i>
+                            Детальный список ошибок
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% for theme_id, theme_data in errors_by_theme.items %}
+                        <div class="mb-4">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-folder"></i>
+                                {{ theme_data.theme.title }}
+                            </h6>
+                            
+                            {% for ticket_id, ticket_data in theme_data.tickets.items %}
+                            <div class="ms-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="text-secondary mb-0">
+                                        <i class="bi bi-file-text"></i>
+                                        {{ ticket_data.ticket.title }}
+                                    </h6>
+                                    <span class="badge bg-danger">
+                                        {{ ticket_data.errors|length }} ошибок
+                                    </span>
+                                </div>
+                                
+                                <div class="ms-3">
+                                    {% for error in ticket_data.errors %}
+                                    <div class="card mb-2 border-danger">
+                                        <div class="card-body py-2">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-8">
+                                                    <p class="mb-1">
+                                                        <strong>Вопрос:</strong>
+                                                        {{ error.question.text|truncatewords:15 }}
+                                                    </p>
+                                                    <p class="mb-0 text-muted small">
+                                                        <strong>Ваш ответ:</strong>
+                                                        {% for answer in error.selected_answers.all %}
+                                                            <span class="badge bg-danger me-1">
+                                                                <i class="bi bi-x"></i>
+                                                                {{ answer.text|truncatewords:3 }}
+                                                            </span>
+                                                        {% endfor %}
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-4 text-end">
+                                                    <small class="text-muted">
+                                                        {{ error.answered_at|date:"d.m.Y H:i" }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Нет ошибок -->
+        <div class="text-center py-5">
+            <i class="bi bi-check-circle text-success display-1"></i>
+            <h3 class="mt-3 text-success">Отлично!</h3>
+            <p class="lead text-muted">
+                У вас нет ошибок для повторного прохождения
+            </p>
+            <a href="{% url 'medic_card:home' %}" class="btn btn-primary">
+                <i class="bi bi-house"></i>
+                На главную
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
