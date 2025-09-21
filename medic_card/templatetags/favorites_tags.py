@@ -16,3 +16,15 @@ def is_favorite(obj, user):
 def content_type_id(obj):
     """Возвращает ID типа контента для объекта"""
     return ContentType.objects.get_for_model(obj).id
+
+
+@register.filter
+def get_progress_color(obj, user):
+    """Возвращает цвет прогресса для объекта"""
+    return obj.get_progress_color(user)
+
+
+@register.filter
+def get_progress_stats(obj, user):
+    """Возвращает статистику прогресса для объекта"""
+    return obj.get_user_progress_stats(user)

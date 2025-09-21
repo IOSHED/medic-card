@@ -1,3 +1,5 @@
+import random
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
@@ -150,10 +152,19 @@ def take_question(request, ticket_id, question_index):
     ticket = get_object_or_404(Ticket, id=ticket_id, is_active=True)
     progress = get_object_or_404(TicketProgress, user=request.user, ticket=ticket)
 
-    questions = ticket.questions.filter(is_active=True).order_by("order", "created_at")
+    # Получаем вопросы в сохраненном порядке или создаем новый порядок
+    questions = progress.get_questions_in_order()
+
+    # Если это перерешивание (временный билет или сброс прогресса), перемешиваем вопросы
+    if (
+        ticket.is_temporary or progress.current_question_index == 0
+    ) and not progress.question_order:
+        random.shuffle(questions)
+        progress.set_questions_order(questions)
+
     question_index = int(question_index)
 
-    if question_index >= questions.count():
+    if question_index >= len(questions):
         # Билет завершен
         progress.is_completed = True
         progress.completed_at = timezone.now()
@@ -176,7 +187,9 @@ def take_question(request, ticket_id, question_index):
         return redirect("medic_card:ticket_result", ticket_id=ticket_id)
 
     question = questions[question_index]
-    answers = question.answers.filter(is_active=True).order_by("order", "id")
+    # Получаем ответы и перемешиваем их
+    answers = list(question.answers.filter(is_active=True).order_by("order", "id"))
+    random.shuffle(answers)
 
     # Проверяем, есть ли уже ответ на этот вопрос
     user_answer = UserAnswer.objects.filter(
@@ -188,7 +201,7 @@ def take_question(request, ticket_id, question_index):
         "question": question,
         "answers": answers,
         "question_index": question_index,
-        "total_questions": questions.count(),
+        "total_questions": len(questions),
         "progress": progress,
         "user_answer": user_answer,
         "show_result": user_answer is not None,
@@ -209,10 +222,12 @@ def submit_answer(request, ticket_id, question_index):
     ticket = get_object_or_404(Ticket, id=ticket_id, is_active=True)
     progress = get_object_or_404(TicketProgress, user=request.user, ticket=ticket)
 
-    questions = ticket.questions.filter(is_active=True).order_by("order", "created_at")
+    # Получаем вопросы в сохраненном порядке
+    questions = progress.get_questions_in_order()
+
     question_index = int(question_index)
 
-    if question_index >= questions.count():
+    if question_index >= len(questions):
         return redirect("medic_card:ticket_result", ticket_id=ticket_id)
 
     question = questions[question_index]
@@ -383,6 +398,9 @@ def retake_ticket(request, ticket_id, mode="all"):
         progress.time_spent = None
         progress.started_at = timezone.now()  # Обновляем время начала
         progress.correct_answers = 0
+        progress.question_order = (
+            None  # Сбрасываем порядок вопросов для нового перемешивания
+        )
         progress.save()
 
         # Обновляем профиль пользователя (уменьшаем статистику)

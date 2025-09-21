@@ -25,7 +25,7 @@
         <div class="row">
             {% for item in all_items %}
             <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card h-100 shadow-sm">
+                <div class="card h-100 shadow-sm border-{{ item.object|get_progress_color:user }}">
                     <div class="card-body d-flex flex-column position-relative">
                         <!-- Иконка звездочки -->
                         <button class="btn btn-link p-0 position-absolute top-0 end-0 me-2 mt-2 favorite-btn" 
@@ -65,6 +65,39 @@
                                 </small>
                                 <small class="text-muted">{{ item.added_at|date:"d.m.Y H:i" }}</small>
                             </div>
+                            
+                            <!-- Прогресс -->
+                            {% with stats=item.object|get_progress_stats:user %}
+                            {% if stats and stats.total_questions > 0 %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Прогресс:</small>
+                                    <small class="fw-bold text-{{ item.object|get_progress_color:user }}">
+                                        {{ stats.correct_answers }}/{{ stats.total_questions }} 
+                                        ({{ stats.accuracy|floatformat:1 }}%)
+                                    </small>
+                                </div>
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar bg-{{ item.object|get_progress_color:user }}" 
+                                         style="width: {{ stats.accuracy }}%"></div>
+                                </div>
+                                {% if stats.mistakes > 0 %}
+                                <small class="text-danger">
+                                    <i class="bi bi-x-circle"></i> {{ stats.mistakes }} ошибок
+                                </small>
+                                {% endif %}
+                                {% if item.type == 'ticket' and stats.is_completed %}
+                                <small class="text-success">
+                                    <i class="bi bi-check-circle"></i> Завершен
+                                </small>
+                                {% elif item.type == 'ticket' and not stats.is_completed %}
+                                <small class="text-info">
+                                    <i class="bi bi-clock"></i> В процессе
+                                </small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            {% endwith %}
                             
                             <div class="d-grid gap-2">
                                 {% if item.type == 'theme' %}

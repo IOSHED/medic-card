@@ -31,6 +31,48 @@ class Theme(models.Model):
     def get_tickets_count(self):
         return self.tickets.filter(is_active=True).count()
 
+    def get_user_progress_stats(self, user):
+        """Возвращает статистику прогресса пользователя по теме"""
+        if not user.is_authenticated:
+            return None
+
+        tickets = self.tickets.filter(is_active=True)
+        total_questions = 0
+        correct_answers = 0
+        mistakes = 0
+
+        for ticket in tickets:
+            try:
+                progress = TicketProgress.objects.get(user=user, ticket=ticket)
+                total_questions += progress.total_questions
+                correct_answers += progress.correct_answers
+                mistakes += progress.total_questions - progress.correct_answers
+            except TicketProgress.DoesNotExist:
+                pass
+
+        return {
+            "total_questions": total_questions,
+            "correct_answers": correct_answers,
+            "mistakes": mistakes,
+            "accuracy": (correct_answers / total_questions * 100)
+            if total_questions > 0
+            else 0,
+        }
+
+    def get_progress_color(self, user):
+        """Возвращает цвет рамки на основе количества ошибок"""
+        stats = self.get_user_progress_stats(user)
+        if not stats or stats["total_questions"] == 0:
+            return "secondary"  # Серый - нет прогресса
+
+        accuracy = stats["accuracy"]
+        if accuracy >= 80:
+            return "success"  # Зеленый - хорошо
+        elif accuracy >= 60:
+            return "warning"  # Желтый - удовлетворительно
+        else:
+            return "danger"  # Красный - плохо
+
 
 class Ticket(models.Model):
     """Модель билета - может создавать только персонал"""
@@ -68,6 +110,48 @@ class Ticket(models.Model):
 
     def get_questions_count(self):
         return self.questions.filter(is_active=True).count()
+
+    def get_user_progress_stats(self, user):
+        """Возвращает статистику прогресса пользователя по билету"""
+        if not user.is_authenticated:
+            return None
+
+        try:
+            progress = TicketProgress.objects.get(user=user, ticket=self)
+            return {
+                "total_questions": progress.total_questions,
+                "correct_answers": progress.correct_answers,
+                "mistakes": progress.total_questions - progress.correct_answers,
+                "accuracy": (progress.correct_answers / progress.total_questions * 100)
+                if progress.total_questions > 0
+                else 0,
+                "is_completed": progress.is_completed,
+            }
+        except TicketProgress.DoesNotExist:
+            return {
+                "total_questions": self.get_questions_count(),
+                "correct_answers": 0,
+                "mistakes": 0,
+                "accuracy": 0,
+                "is_completed": False,
+            }
+
+    def get_progress_color(self, user):
+        """Возвращает цвет рамки на основе количества ошибок"""
+        stats = self.get_user_progress_stats(user)
+        if not stats or stats["total_questions"] == 0:
+            return "secondary"  # Серый - нет прогресса
+
+        if not stats["is_completed"]:
+            return "info"  # Синий - в процессе
+
+        accuracy = stats["accuracy"]
+        if accuracy >= 80:
+            return "success"  # Зеленый - хорошо
+        elif accuracy >= 60:
+            return "warning"  # Желтый - удовлетворительно
+        else:
+            return "danger"  # Красный - плохо
 
     def create_errors_ticket(self, user, wrong_questions):
         """Создает временный билет только с вопросами, на которые пользователь ответил неправильно"""
@@ -216,6 +300,9 @@ class TicketProgress(models.Model):
     time_spent = models.DurationField(
         null=True, blank=True, verbose_name="Время выполнения"
     )
+    question_order = models.JSONField(
+        null=True, blank=True, verbose_name="Порядок вопросов (ID)"
+    )
 
     class Meta:
         verbose_name = "Прогресс билета"
@@ -276,6 +363,31 @@ class TicketProgress(models.Model):
             else:
                 return f"{seconds}с"
         return "Не завершен"
+
+    def get_questions_in_order(self):
+        """Возвращает вопросы в сохраненном порядке"""
+        if self.question_order:
+            # Получаем вопросы в сохраненном порядке
+            questions = []
+            for question_id in self.question_order:
+                try:
+                    question = Question.objects.get(id=question_id, is_active=True)
+                    questions.append(question)
+                except Question.DoesNotExist:
+                    continue
+            return questions
+        else:
+            # Если порядок не сохранен, возвращаем в обычном порядке
+            return list(
+                self.ticket.questions.filter(is_active=True).order_by(
+                    "order", "created_at"
+                )
+            )
+
+    def set_questions_order(self, questions):
+        """Сохраняет порядок вопросов"""
+        self.question_order = [q.id for q in questions]
+        self.save()
 
 
 class Favorites(models.Model):
