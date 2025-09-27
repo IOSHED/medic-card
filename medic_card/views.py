@@ -93,7 +93,7 @@ def update_original_ticket_from_temp(user, temp_ticket, temp_progress):
     original_progress.save()
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 def home(request):
     """Главная страница со списком тем"""
     themes = Theme.objects.filter(is_active=True).order_by("order", "created_at")
@@ -101,7 +101,7 @@ def home(request):
     return render(request, "medic_card/home.html", context)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 def theme_detail(request, theme_id):
     """Страница темы со списком билетов"""
     theme = get_object_or_404(Theme, id=theme_id, is_active=True)
@@ -112,7 +112,7 @@ def theme_detail(request, theme_id):
     return render(request, "medic_card/theme_detail.html", context)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 def ticket_detail(request, ticket_id):
     """Страница билета со списком вопросов"""
     ticket = get_object_or_404(Ticket, id=ticket_id, is_active=True)
@@ -121,7 +121,7 @@ def ticket_detail(request, ticket_id):
     return render(request, "medic_card/ticket_detail.html", context)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def start_ticket(request, ticket_id):
     """Начать прохождение билета"""
@@ -153,7 +153,7 @@ def start_ticket(request, ticket_id):
     )
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def take_question(request, ticket_id, question_index):
     """Страница вопроса для прохождения билета"""
@@ -231,7 +231,7 @@ def take_question(request, ticket_id, question_index):
     return render(request, "medic_card/take_question.html", context)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def submit_answer(request, ticket_id, question_index):
     """Обработка ответа пользователя"""
@@ -346,7 +346,7 @@ def submit_answer(request, ticket_id, question_index):
     )
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def next_question(request, ticket_id, question_index):
     """Переход к следующему вопросу"""
@@ -365,7 +365,7 @@ def next_question(request, ticket_id, question_index):
     )
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def ticket_result(request, ticket_id):
     """Результаты прохождения билета"""
@@ -442,7 +442,7 @@ def ticket_result(request, ticket_id):
     return render(request, "medic_card/ticket_result.html", context)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def retake_ticket(request, ticket_id, mode="all"):
     """Перерешать билет (весь или только ошибки)"""
@@ -511,7 +511,7 @@ def retake_ticket(request, ticket_id, mode="all"):
     return redirect("medic_card:start_ticket", ticket_id=ticket_id)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 def question_detail(request, question_id):
     """Страница вопроса с вариантами ответов"""
     question = get_object_or_404(Question, id=question_id, is_active=True)
@@ -520,7 +520,7 @@ def question_detail(request, question_id):
     return render(request, "medic_card/question_detail.html", context)
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 @require_http_methods(["POST"])
 def toggle_favorite(request):
@@ -546,7 +546,7 @@ def toggle_favorite(request):
         return JsonResponse({"success": False, "message": str(e)})
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 @require_http_methods(["GET"])
 def get_errors_count(request):
@@ -580,7 +580,7 @@ def get_errors_count(request):
         return JsonResponse({"success": False, "message": str(e)})
 
 
-@ratelimit(key="ip", rate="200/h")
+@ratelimit(key="ip", rate="100/h")
 @login_required
 def favorites_list(request):
     """Страница избранного"""
