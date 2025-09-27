@@ -35,10 +35,12 @@ urlpatterns = [
     # Избранное
     path("favorites/", views.favorites_list, name="favorites"),
     path("toggle-favorite/", views.toggle_favorite, name="toggle_favorite"),
+    # AJAX эндпоинты
+    path("get-errors-count/", views.get_errors_count, name="get_errors_count"),
     # Работа над ошибками
     path("errors-work/", views.errors_work, name="errors_work"),
     path(
-        "errors-work/result/<int:errors_count>/",
+        "errors-work/result/",
         views.errors_work_result,
         name="errors_work_result",
     ),

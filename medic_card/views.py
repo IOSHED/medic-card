@@ -21,6 +21,7 @@ from .models import (
     UserAnswer,
 )
 
+
 def update_user_profile(user, progress):
     """Обновляет профиль пользователя после завершения билета"""
     try:
@@ -35,7 +36,7 @@ def update_user_profile(user, progress):
     profile.last_activity = timezone.now()
     profile.save()
 
-@ratelimit(key='ip', rate='200/h')
+
 def update_original_ticket_from_temp(user, temp_ticket, temp_progress):
     """Обновляет оригинальный билет результатами из временного билета"""
     original_ticket = temp_ticket.original_ticket
@@ -91,22 +92,27 @@ def update_original_ticket_from_temp(user, temp_ticket, temp_progress):
     original_progress.total_questions = original_questions.count()
     original_progress.save()
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 def home(request):
     """Главная страница со списком тем"""
     themes = Theme.objects.filter(is_active=True).order_by("order", "created_at")
     context = {"themes": themes}
     return render(request, "medic_card/home.html", context)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 def theme_detail(request, theme_id):
     """Страница темы со списком билетов"""
     theme = get_object_or_404(Theme, id=theme_id, is_active=True)
-    tickets = theme.tickets.filter(is_active=True).order_by("order", "created_at")
+    tickets = theme.tickets.filter(is_active=True, is_temporary=False).order_by(
+        "order", "created_at"
+    )
     context = {"theme": theme, "tickets": tickets}
     return render(request, "medic_card/theme_detail.html", context)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 def ticket_detail(request, ticket_id):
     """Страница билета со списком вопросов"""
     ticket = get_object_or_404(Ticket, id=ticket_id, is_active=True)
@@ -114,7 +120,8 @@ def ticket_detail(request, ticket_id):
     context = {"ticket": ticket, "questions": questions}
     return render(request, "medic_card/ticket_detail.html", context)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def start_ticket(request, ticket_id):
     """Начать прохождение билета"""
@@ -145,7 +152,8 @@ def start_ticket(request, ticket_id):
         question_index=progress.current_question_index,
     )
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def take_question(request, ticket_id, question_index):
     """Страница вопроса для прохождения билета"""
@@ -171,18 +179,32 @@ def take_question(request, ticket_id, question_index):
         progress.calculate_time_spent()
         progress.save()
 
-        # Обновляем профиль пользователя
-        update_user_profile(request.user, progress)
-
         # Если это временный билет, обновляем оригинальный билет и удаляем временный
         if ticket.is_temporary and ticket.original_ticket:
             update_original_ticket_from_temp(request.user, ticket, progress)
+            # Обновляем профиль пользователя только для обычных временных билетов
+            update_user_profile(request.user, progress)
             # Удаляем временный билет
             ticket.delete()
             # Перенаправляем на результаты оригинального билета
             return redirect(
                 "medic_card:ticket_result", ticket_id=ticket.original_ticket.id
             )
+
+        # Если это работа над ошибками (временный билет без original_ticket)
+        if ticket.is_temporary and not ticket.original_ticket:
+            # Очищаем сессию (результаты уже обновлены в submit_answer)
+            if "errors_work_question_mapping" in request.session:
+                del request.session["errors_work_question_mapping"]
+            if "initial_errors_count" in request.session:
+                del request.session["initial_errors_count"]
+            # Удаляем временный билет
+            ticket.delete()
+            # Перенаправляем на результаты работы над ошибками
+            return redirect("medic_card:errors_work_result")
+
+        # Обновляем профиль пользователя для обычных билетов
+        update_user_profile(request.user, progress)
 
         return redirect("medic_card:ticket_result", ticket_id=ticket_id)
 
@@ -208,7 +230,8 @@ def take_question(request, ticket_id, question_index):
     }
     return render(request, "medic_card/take_question.html", context)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def submit_answer(request, ticket_id, question_index):
     """Обработка ответа пользователя"""
@@ -268,6 +291,42 @@ def submit_answer(request, ticket_id, question_index):
     # Обновляем выбранные ответы
     user_answer.selected_answers.set(selected_answers)
 
+    # Если это работа над ошибками (временный билет без original_ticket),
+    # сразу обновляем оригинальный билет
+    if ticket.is_temporary and not ticket.original_ticket:
+        if is_correct:
+            # Если вопрос решен правильно, удаляем все неправильные ответы с таким же текстом вопроса
+            UserAnswer.objects.filter(
+                user=request.user, question__text=question.text, is_correct=False
+            ).delete()
+        else:
+            # Если вопрос решен неправильно, находим оригинальный вопрос по тексту
+            try:
+                original_question = (
+                    Question.objects.filter(text=question.text, is_active=True)
+                    .exclude(ticket__is_temporary=True)
+                    .first()
+                )
+
+                if original_question:
+                    # Обновляем или создаем ответ в оригинальном билете
+                    original_user_answer, created = UserAnswer.objects.get_or_create(
+                        user=request.user,
+                        question=original_question,
+                        defaults={"is_correct": is_correct},
+                    )
+
+                    if not created:
+                        original_user_answer.is_correct = is_correct
+                        original_user_answer.answered_at = timezone.now()
+                        original_user_answer.save()
+
+                    # Обновляем выбранные ответы
+                    original_user_answer.selected_answers.set(selected_answers)
+
+            except Exception:
+                pass
+
     # Обновляем прогресс
     if created:
         # Новый ответ
@@ -286,7 +345,8 @@ def submit_answer(request, ticket_id, question_index):
         "medic_card:take_question", ticket_id=ticket_id, question_index=question_index
     )
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def next_question(request, ticket_id, question_index):
     """Переход к следующему вопросу"""
@@ -304,11 +364,25 @@ def next_question(request, ticket_id, question_index):
         "medic_card:take_question", ticket_id=ticket_id, question_index=next_index
     )
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def ticket_result(request, ticket_id):
     """Результаты прохождения билета"""
-    ticket = get_object_or_404(Ticket, id=ticket_id, is_active=True)
+    try:
+        ticket = Ticket.objects.get(id=ticket_id, is_active=True)
+    except Ticket.DoesNotExist:
+        # Если билет не найден, возможно это был временный билет для работы над ошибками
+        # Проверяем, есть ли маппинг в сессии
+        if "errors_work_question_mapping" in request.session:
+            # Перенаправляем на результаты работы над ошибками
+            return redirect("medic_card:errors_work_result")
+        else:
+            # Обычная 404 ошибка
+            from django.http import Http404
+
+            raise Http404("Билет не найден")
+
     progress = get_object_or_404(TicketProgress, user=request.user, ticket=ticket)
 
     if not progress.is_completed:
@@ -318,18 +392,32 @@ def ticket_result(request, ticket_id):
         progress.calculate_time_spent()
         progress.save()
 
-        # Обновляем профиль пользователя
-        update_user_profile(request.user, progress)
-
         # Если это временный билет, обновляем оригинальный билет и удаляем временный
         if ticket.is_temporary and ticket.original_ticket:
             update_original_ticket_from_temp(request.user, ticket, progress)
+            # Обновляем профиль пользователя только для обычных временных билетов
+            update_user_profile(request.user, progress)
             # Удаляем временный билет
             ticket.delete()
             # Перенаправляем на результаты оригинального билета
             return redirect(
                 "medic_card:ticket_result", ticket_id=ticket.original_ticket.id
             )
+
+        # Если это работа над ошибками (временный билет без original_ticket)
+        if ticket.is_temporary and not ticket.original_ticket:
+            # Очищаем сессию (результаты уже обновлены в submit_answer)
+            if "errors_work_question_mapping" in request.session:
+                del request.session["errors_work_question_mapping"]
+            if "initial_errors_count" in request.session:
+                del request.session["initial_errors_count"]
+            # Удаляем временный билет
+            ticket.delete()
+            # Перенаправляем на результаты работы над ошибками
+            return redirect("medic_card:errors_work_result")
+
+        # Обновляем профиль пользователя для обычных билетов
+        update_user_profile(request.user, progress)
 
     # Получаем все ответы пользователя по билету
     questions = ticket.questions.filter(is_active=True).order_by("order", "created_at")
@@ -353,7 +441,8 @@ def ticket_result(request, ticket_id):
     }
     return render(request, "medic_card/ticket_result.html", context)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def retake_ticket(request, ticket_id, mode="all"):
     """Перерешать билет (весь или только ошибки)"""
@@ -421,7 +510,8 @@ def retake_ticket(request, ticket_id, mode="all"):
 
     return redirect("medic_card:start_ticket", ticket_id=ticket_id)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 def question_detail(request, question_id):
     """Страница вопроса с вариантами ответов"""
     question = get_object_or_404(Question, id=question_id, is_active=True)
@@ -429,7 +519,8 @@ def question_detail(request, question_id):
     context = {"question": question, "answers": answers}
     return render(request, "medic_card/question_detail.html", context)
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 @require_http_methods(["POST"])
 def toggle_favorite(request):
@@ -454,7 +545,42 @@ def toggle_favorite(request):
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)})
 
-@ratelimit(key='ip', rate='200/h')
+
+@ratelimit(key="ip", rate="200/h")
+@login_required
+@require_http_methods(["GET"])
+def get_errors_count(request):
+    """AJAX-обработчик для получения текущего количества ошибок"""
+    try:
+        # Получаем все текущие неправильные ответы пользователя
+        current_errors_count = UserAnswer.objects.filter(
+            user=request.user, is_correct=False
+        ).count()
+
+        # Получаем изначальное количество ошибок из сессии
+        initial_errors_count = request.session.get("initial_errors_count", 0)
+
+        # Вычисляем количество исправленных ошибок
+        corrected_errors = max(0, initial_errors_count - current_errors_count)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "current_errors_count": current_errors_count,
+                "initial_errors_count": initial_errors_count,
+                "corrected_errors": corrected_errors,
+                "debug": {
+                    "initial_errors_count": initial_errors_count,
+                    "current_errors_count": current_errors_count,
+                },
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)})
+
+
+@ratelimit(key="ip", rate="200/h")
 @login_required
 def favorites_list(request):
     """Страница избранного"""
@@ -491,6 +617,7 @@ def favorites_list(request):
     context = {"all_items": all_items, "themes": themes, "tickets": tickets}
     return render(request, "medic_card/favorites.html", context)
 
+
 @login_required
 def errors_work(request):
     """Страница работы над ошибками - показывает все ошибки пользователя"""
@@ -498,8 +625,11 @@ def errors_work(request):
     wrong_answers = (
         UserAnswer.objects.filter(user=request.user, is_correct=False)
         .select_related("question", "question__ticket", "question__ticket__theme")
+        .prefetch_related("selected_answers")
         .order_by("-answered_at")
     )
+
+    request.session["initial_errors_count"] = len(wrong_answers)
 
     # Группируем ошибки по темам и билетам
     errors_by_theme = {}
@@ -522,15 +652,18 @@ def errors_work(request):
 
     # Создаем временный билет со всеми ошибками
     if request.method == "POST" and wrong_answers.exists():
-        # Сохраняем исходное количество ошибок в сессии
-        request.session['initial_errors_count'] = total_errors
+        # Сохраняем изначальное количество ошибок в сессии
+        request.session["initial_errors_count"] = total_errors
 
         # Получаем все вопросы с ошибками
+        wrong_question_ids = list(
+            wrong_answers.values_list("question_id", flat=True).distinct()
+        )
         wrong_questions = Question.objects.filter(
-            id__in=wrong_answers.values_list("question_id", flat=True)
-        ).distinct()
+            id__in=wrong_question_ids
+        ).prefetch_related("answers")
 
-        # Создаем временный билет
+        # Создаем временный билет для работы над ошибками
         temp_ticket = Ticket.objects.create(
             theme=Theme.objects.first(),
             title="Работа над ошибками",
@@ -538,8 +671,11 @@ def errors_work(request):
             created_by=request.user,
             is_active=True,
             is_temporary=True,
-            original_ticket=None,
+            original_ticket=None,  # Специальный маркер для работы над ошибками
         )
+
+        # Сохраняем связь между новыми вопросами и оригинальными
+        question_mapping = {}
 
         # Копируем все вопросы с ошибками
         for question in wrong_questions:
@@ -551,6 +687,9 @@ def errors_work(request):
                 is_active=True,
             )
 
+            # Сохраняем связь между новым и оригинальным вопросом
+            question_mapping[new_question.id] = question.id
+
             # Копируем ответы
             for answer in question.answers.filter(is_active=True):
                 Answer.objects.create(
@@ -561,33 +700,38 @@ def errors_work(request):
                     order=answer.order,
                 )
 
+        # Сохраняем маппинг вопросов в сессии для последующего обновления
+        request.session["errors_work_question_mapping"] = question_mapping
+
         # Перенаправляем на временный билет
         return redirect("medic_card:start_ticket", ticket_id=temp_ticket.id)
 
     context = {
         "errors_by_theme": errors_by_theme,
         "total_errors": total_errors,
-        "has_errors": total_errors > 0,
+        "current_errors_count": total_errors,  # Добавлено для консистентности
     }
     return render(request, "medic_card/errors_work.html", context)
 
+
 @login_required
-def errors_work_result(request, errors_count):
+def errors_work_result(request):
     """Результаты работы над ошибками - показывает оставшиеся ошибки"""
-    # Получаем исходное количество ошибок из сессии
-    initial_errors_count = request.session.get('initial_errors_count', 0)
+    # Получаем изначальное количество ошибок из сессии
+    initial_errors_count = request.session.get("initial_errors_count", 0)
 
     # Получаем все текущие неправильные ответы пользователя
     current_wrong_answers = (
         UserAnswer.objects.filter(user=request.user, is_correct=False)
         .select_related("question", "question__ticket", "question__ticket__theme")
+        .prefetch_related("selected_answers")
         .order_by("-answered_at")
     )
 
     current_errors_count = current_wrong_answers.count()
 
     # Вычисляем количество исправленных ошибок
-    corrected_errors = initial_errors_count - current_errors_count
+    corrected_errors = max(0, initial_errors_count - current_errors_count)
 
     # Группируем оставшиеся ошибки по темам и билетам
     errors_by_theme = {}
@@ -610,11 +754,17 @@ def errors_work_result(request, errors_count):
     # Обработка POST-запроса для создания нового билета
     if request.method == "POST" and current_errors_count > 0:
         # Создаем новый билет из оставшихся ошибок
-        wrong_questions = Question.objects.filter(
-            id__in=current_wrong_answers.values_list("question_id", flat=True)
+        wrong_question_ids = current_wrong_answers.values_list(
+            "question_id", flat=True
         ).distinct()
+        wrong_questions = Question.objects.filter(
+            id__in=wrong_question_ids
+        ).prefetch_related("answers")
 
         if wrong_questions.exists():
+            # Обновляем изначальное количество ошибок в сессии
+            request.session["initial_errors_count"] = current_errors_count
+
             temp_ticket = Ticket.objects.create(
                 theme=Theme.objects.first(),
                 title="Работа над ошибками",
@@ -624,6 +774,9 @@ def errors_work_result(request, errors_count):
                 is_temporary=True,
                 original_ticket=None,
             )
+
+            # Сохраняем связь между новыми вопросами и оригинальными
+            question_mapping = {}
 
             # Копируем вопросы с оставшимися ошибками
             for question in wrong_questions:
@@ -635,6 +788,9 @@ def errors_work_result(request, errors_count):
                     is_active=True,
                 )
 
+                # Сохраняем связь между новым и оригинальным вопросом
+                question_mapping[new_question.id] = question.id
+
                 # Копируем ответы
                 for answer in question.answers.filter(is_active=True):
                     Answer.objects.create(
@@ -645,8 +801,8 @@ def errors_work_result(request, errors_count):
                         order=answer.order,
                     )
 
-            # Обновляем счетчик ошибок в сессии для следующего подхода
-            request.session['initial_errors_count'] = current_errors_count
+            # Сохраняем маппинг вопросов в сессии для последующего обновления
+            request.session["errors_work_question_mapping"] = question_mapping
 
             # Перенаправляем на новый временный билет
             return redirect("medic_card:start_ticket", ticket_id=temp_ticket.id)
@@ -656,7 +812,5 @@ def errors_work_result(request, errors_count):
         "initial_errors_count": initial_errors_count,
         "current_errors_count": current_errors_count,
         "corrected_errors": corrected_errors,
-        "has_errors": current_errors_count > 0,
-        "errors_count": current_errors_count,  # Для использования в шаблоне
     }
     return render(request, "medic_card/errors_work_result.html", context)

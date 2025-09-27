@@ -23,9 +23,9 @@
         </div>
 
         <!-- Статистика -->
-        <div class="row mb-5">
-            <div class="col-md-4 m-1">
-                <div class="card text-center border-warning">
+        <div class="row mb-5 justify-content-center">
+            <div class="col-md-4 mb-3">
+                <div class="card text-center border-warning h-100">
                     <div class="card-body">
                         <h5 class="card-title text-warning">
                             <i class="bi bi-exclamation-triangle"></i>
@@ -36,54 +36,39 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 m-1">
-                <div class="card text-center border-info">
-                    <div class="card-body">
-                        <h5 class="card-title text-info">
-                            <i class="bi bi-list-check"></i>
-                            Всего ошибок
-                        </h5>
-                        <h2 class="text-info">{{ initial_errors_count }}</h2>
-                        <p class="text-muted">Было изначально</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 m-1">
-                <div class="card text-center border-success">
-                    <div class="card-body">
-                        <h5 class="card-title text-success">
-                            <i class="bi bi-check-circle"></i>
-                            Исправлено
-                        </h5>
-                        <h2 class="text-success">{{ corrected_errors }}</h2>
-                        <p class="text-muted">В этом подходе</p>
-                    </div>
-                </div>
-            </div>
+<!--            <div class="col-md-4 mb-3">-->
+<!--                <div class="card text-center border-info h-100">-->
+<!--                    <div class="card-body">-->
+<!--                        <h5 class="card-title text-info">-->
+<!--                            <i class="bi bi-list-check"></i>-->
+<!--                            Всего ошибок-->
+<!--                        </h5>-->
+<!--                        <h2 class="text-info">{{ initial_errors_count }}</h2>-->
+<!--                        <p class="text-muted">Было изначально</p>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            <div class="col-md-4 mb-3">-->
+<!--                <div class="card text-center border-success h-100">-->
+<!--                    <div class="card-body">-->
+<!--                        <h5 class="card-title text-success">-->
+<!--                            <i class="bi bi-check-circle"></i>-->
+<!--                            Исправлено-->
+<!--                        </h5>-->
+<!--                        <h2 class="text-success">{{ corrected_errors }}</h2>-->
+<!--                        <p class="text-muted">В этом подходе</p>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
         </div>
 
         {% if current_errors_count > 0 %}
-        <!-- Сообщение о продолжении -->
-        <div class="alert alert-warning text-center mb-4">
-            <h4 class="alert-heading">
-                <i class="bi bi-info-circle"></i>
-                Есть ошибки для исправления!
-            </h4>
-            <p class="mb-3">
-                У вас осталось <strong>{{ errors_count }}</strong> ошибок, которые нужно исправить.
-                Хотите продолжить работу над ошибками?
-            </p>
-            <hr>
-            <p class="mb-0">
-                <strong>Совет:</strong> Создайте новый временный билет с оставшимися ошибками для более эффективного обучения.
-            </p>
-        </div>
 
         <!-- Кнопки действий -->
         <div class="text-center mb-5">
             <form method="post" class="d-inline">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-warning btn-lg me-3">
+                <button type="submit" class="btn btn-warning btn-lg m-3">
                     <i class="bi bi-arrow-clockwise"></i>
                     Продолжить работу над ошибками
                 </button>
@@ -101,7 +86,7 @@
                     <i class="bi bi-list-ul"></i>
                     Детали оставшихся ошибок
                 </h3>
-                
+
                 {% for theme_id, theme_data in errors_by_theme.items %}
                 <div class="card mb-4">
                     <div class="card-header bg-light">

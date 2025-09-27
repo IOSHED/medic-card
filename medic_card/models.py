@@ -29,14 +29,14 @@ class Theme(models.Model):
         return self.title
 
     def get_tickets_count(self):
-        return self.tickets.filter(is_active=True).count()
+        return self.tickets.filter(is_active=True, is_temporary=False).count()
 
     def get_user_progress_stats(self, user):
         """Возвращает статистику прогресса пользователя по теме"""
         if not user.is_authenticated:
             return None
 
-        tickets = self.tickets.filter(is_active=True)
+        tickets = self.tickets.filter(is_active=True, is_temporary=False)
         total_questions = 0
         correct_answers = 0
         mistakes = 0

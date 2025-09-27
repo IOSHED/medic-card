@@ -143,7 +143,7 @@
                     {% endif %}
                 </div>
 
-                <div class="alert {% if user_answer.is_correct %}alert-success{% else %}alert-danger{% endif %} mb-4">
+                <div class="alert {% if user_answer.is_correct %}alert-success{% else %}alert-danger{% endif %} mb-4" id="result-alert">
                     <h6 class="alert-heading">
                         {% if user_answer.is_correct %}
                             <i class="bi bi-check-circle"></i> Правильно!
@@ -152,9 +152,13 @@
                         {% endif %}
                     </h6>
                     {% if user_answer.is_correct %}
-                        Отличная работа! Вы правильно ответили на этот вопрос.
+                        <div id="correct-message">
+                            Отличная работа! Вы правильно ответили на этот вопрос.
+                        </div>
                     {% else %}
-                        К сожалению, ваш ответ неверный. Изучите правильные варианты выше.
+                        <div id="incorrect-message">
+                            К сожалению, ваш ответ неверный. Изучите правильные варианты выше.
+                        </div>
                     {% endif %}
                 </div>
 
@@ -197,6 +201,88 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTimer();
         }
     });
+
+    // Функция для обновления интерфейса после ответа
+    function updateInterfaceAfterAnswer() {
+        // Проверяем, есть ли результат ответа
+        const resultAlert = document.getElementById('result-alert');
+        if (resultAlert) {
+            const isCorrect = resultAlert.classList.contains('alert-success');
+            
+            if (isCorrect) {
+                // Если ответ правильный, добавляем анимацию и обновляем сообщение
+                resultAlert.classList.add('animate__animated', 'animate__pulse');
+                
+                // Проверяем, является ли это работой над ошибками
+                const isErrorsWork = {{ ticket.is_temporary|yesno:"true,false" }} && {{ ticket.original_ticket|yesno:"false,true" }};
+                
+                if (isErrorsWork) {
+                    // Добавляем сообщение о том, что вопрос больше не будет показываться
+                    const correctMessage = document.getElementById('correct-message');
+                    if (correctMessage && !correctMessage.innerHTML.includes('больше не будет показываться')) {
+                        correctMessage.innerHTML += '<br><small class="text-muted">Этот вопрос больше не будет показываться в работе над ошибками.</small>';
+                    }
+                    
+                    // Добавляем визуальный индикатор успеха
+                    // Обновляем счетчик ошибок в реальном времени
+                    updateErrorsCount();
+                }
+            }
+        }
+    }
+
+    // Функция для обновления счетчика ошибок через AJAX
+    function updateErrorsCount() {
+        fetch('{% url "medic_card:get_errors_count" %}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Создаем уведомление о обновлении счетчика
+                showErrorsCountUpdate(data);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при обновлении счетчика ошибок:', error);
+        });
+    }
+
+    // Функция для показа обновления счетчика ошибок
+    function showErrorsCountUpdate(data) {
+        // Создаем временное уведомление
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-info alert-dismissible fade show position-fixed';
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        
+        let debugInfo = '';
+        if (data.debug) {
+            debugInfo = `<br><small class="text-muted">Debug: ${data.debug.total_initial} вопросов в сессии</small>`;
+        }
+        
+        // notification.innerHTML = `
+        //     <i class="bi bi-info-circle"></i>
+        //     <strong>Обновление:</strong> Исправлено ошибок: ${data.corrected_errors} из ${data.initial_errors_count}
+        //     ${debugInfo}
+        //     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        // `;
+        //
+        document.body.appendChild(notification);
+        
+        // Автоматически скрываем уведомление через 5 секунд (увеличили время для отладки)
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Вызываем обновление интерфейса
+    updateInterfaceAfterAnswer();
 });
 </script>
 {% endblock %}
