@@ -114,6 +114,32 @@
             display: none;
         }
 
+        /* Стили для поиска */
+        .search-container {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+
+        .search-input {
+            width: 250px;
+            transition: width 0.3s ease;
+        }
+
+        .search-input:focus {
+            width: 300px;
+        }
+
+        .search-btn-mobile {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            margin-right: 10px;
+        }
+
         /* Специфичные стили для мобильных устройств */
         @media (max-width: 576px) {
             .navbar-brand {
@@ -139,6 +165,15 @@
             .navbar-nav .nav-link i {
                 margin-right: 0.2rem;
             }
+
+            /* Адаптация поиска для мобильных */
+            .search-container {
+                display: none;
+            }
+
+            .search-btn-mobile {
+                display: block;
+            }
         }
 
         @media (min-width: 768px) {
@@ -155,12 +190,33 @@
             .sidebar-overlay {
                 display: none !important;
             }
+
+            /* Скрываем кнопку лупы на ПК */
+            .search-btn-mobile {
+                display: none;
+            }
+
+            /* Показываем поле поиска на ПК */
+            .search-container {
+                display: flex;
+            }
+        }
+
+        /* Дополнительные медиа-запросы для средних экранов */
+        @media (max-width: 992px) {
+            .search-input {
+                width: 200px;
+            }
+
+            .search-input:focus {
+                width: 250px;
+            }
         }
     </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
-    <div class="container-fluid"> <!-- Изменено на container-fluid для лучшего управления пространством -->
+    <div class="container-fluid">
         <button class="btn btn-outline-light me-2 d-md-none" type="button" id="sidebarToggle">
             <i class="bi bi-list"></i>
         </button>
@@ -169,8 +225,26 @@
             <span class="full-brand">Медицинские Билеты</span>
             <span class="short-brand">Билеты</span>
         </a>
+
         <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
             {% if user.is_authenticated %}
+            <!-- Поиск для ПК -->
+            <div class="search-container">
+                <form class="d-flex" method="get" action="{% url 'medic_card:search' %}">
+                    <input class="form-control me-2 search-input" type="search"
+                           placeholder="Поиск по тексту..." aria-label="Search"
+                           name="q" value="{{ request.GET.q }}">
+                    <button class="btn btn-outline-light" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Кнопка лупы для мобильных -->
+            <button class="search-btn-mobile" type="button" data-bs-toggle="modal" data-bs-target="#searchModal">
+                <i class="bi bi-search"></i>
+            </button>
+
             <a class="nav-link text-nowrap p-2" href="{% url 'medic_auth:logout' %}">
                 <i class="bi bi-box-arrow-right"></i> Выход
             </a>
@@ -186,6 +260,30 @@
     </div>
 </nav>
 
+<!-- Модальное окно для поиска на мобильных -->
+{% if user.is_authenticated %}
+<div class="modal fade" id="searchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Поиск по тексту</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="get" action="{% url 'medic_card:search' %}">
+                    <div class="input-group">
+                        <input type="text" class="form-control"
+                               placeholder="Запрос..." name="q">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-search"></i> Найти
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 <!-- Оверлей для мобильных устройств -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 

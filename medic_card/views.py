@@ -21,6 +21,11 @@ from .models import (
     UserAnswer,
 )
 
+# medic_card/views.py
+from django.db.models import Q
+from django.shortcuts import render
+from django.http import JsonResponse
+from .models import Theme, Ticket, Question, Answer
 
 def update_user_profile(user, progress):
     """Обновляет профиль пользователя после завершения билета"""
@@ -814,3 +819,189 @@ def errors_work_result(request):
         "corrected_errors": corrected_errors,
     }
     return render(request, "medic_card/errors_work_result.html", context)
+
+
+from django.db.models import Q, Value, When, Case, IntegerField
+
+from django.db.models import Q, Value, IntegerField, Case, When
+from django.db.models.functions import Lower, Length
+import difflib
+
+def search(request):
+    """Улучшенный поиск с учетом релевантности, опечаток и регистра"""
+    query = request.GET.get('q', '').strip()
+    results = {
+        'themes': [],
+        'tickets': [],
+        'questions': [],
+    }
+
+    if not query:
+        context = {
+            'query': query,
+            'results': results,
+            'has_results': False,
+        }
+        return render(request, 'medic_card/search_results.html', context)
+
+    # Нормализация запроса
+    query_lower = query.lower().strip()
+    query_words = query_lower.split()
+
+    def create_search_q(fields, search_query):
+        """Создает Q-объекты для поиска с различными стратегиями"""
+        q_objects = Q()
+
+        for field in fields:
+            # Точное совпадение (игнорируя регистр)
+            q_objects |= Q(**{f"{field}__iexact": search_query})
+
+            # Начинается с запроса
+            q_objects |= Q(**{f"{field}__istartswith": search_query})
+
+            # Содержит все слова запроса (по порядку)
+            q_objects |= Q(**{f"{field}__icontains": search_query})
+
+            # Содержит любое из слов запроса
+            for word in query_words:
+                if len(word) > 2:  # Игнорируем короткие слова
+                    q_objects |= Q(**{f"{field}__icontains": word})
+
+        return q_objects
+
+    def calculate_similarity(text1, text2):
+        """Вычисляет схожесть между двумя строками"""
+        if not text1 or not text2:
+            return 0
+        return difflib.SequenceMatcher(
+            None,
+            text1.lower(),
+            text2.lower()
+        ).ratio()
+
+    def annotate_relevance(queryset, fields, search_query):
+        """Аннотирует queryset релевантностью"""
+        when_conditions = []
+
+        for field in fields:
+            # Высший приоритет: точное совпадение
+            when_conditions.append(
+                When(**{f"{field}__iexact": search_query}, then=Value(100))
+            )
+            # Высокий приоритет: начинается с запроса
+            when_conditions.append(
+                When(**{f"{field}__istartswith": search_query}, then=Value(80))
+            )
+            # Средний приоритет: содержит всю фразу
+            when_conditions.append(
+                When(**{f"{field}__icontains": search_query}, then=Value(60))
+            )
+            # Низкий приоритет: содержит отдельные слова
+            for i, word in enumerate(query_words):
+                if len(word) > 2:
+                    when_conditions.append(
+                        When(**{f"{field}__icontains": word}, then=Value(40 - i))
+                    )
+
+        return queryset.annotate(
+            relevance=Case(
+                *when_conditions,
+                default=Value(0),
+                output_field=IntegerField()
+            ),
+            title_length=Length(fields[0]) if fields else Value(0)
+        ).order_by('-relevance', 'title_length')
+
+    # Основной поиск
+    themes_base = Theme.objects.filter(
+        create_search_q(['title', 'description'], query_lower),
+        is_active=True
+    ).select_related('created_by').distinct()
+
+    tickets_base = Ticket.objects.filter(
+        create_search_q(['title', 'description'], query_lower),
+        is_active=True
+    ).select_related('theme', 'created_by').distinct()
+
+    questions_base = Question.objects.filter(
+        create_search_q(['text'], query_lower),
+        is_active=True
+    ).select_related('ticket', 'ticket__theme', 'created_by').distinct()
+
+    # Аннотация релевантности
+    results['themes'] = annotate_relevance(themes_base, ['title', 'description'], query_lower)
+    results['tickets'] = annotate_relevance(tickets_base, ['title', 'description'], query_lower)
+    results['questions'] = annotate_relevance(questions_base, ['text'], query_lower)
+
+    # Подсчет общего количества результатов
+    total_results = (
+            results['themes'].count() +
+            results['tickets'].count() +
+            results['questions'].count()
+    )
+
+    # Если результатов мало, добавляем похожие
+    if total_results < 8:
+        similarity_threshold = 0.4
+
+        def find_similar(model_queryset, fields, original_results):
+            """Находит похожие результаты на основе схожести строк"""
+            similar_results = []
+            original_ids = [obj.id for obj in original_results]
+
+            for obj in model_queryset.exclude(id__in=original_ids)[:20]:  # Ограничиваем для производительности
+                max_similarity = 0
+                for field in fields:
+                    field_value = getattr(obj, field, '')
+                    if field_value:
+                        similarity = calculate_similarity(query, field_value)
+                        max_similarity = max(max_similarity, similarity)
+
+                if max_similarity >= similarity_threshold:
+                    similar_results.append((obj, max_similarity))
+
+            # Сортируем по схожести
+            similar_results.sort(key=lambda x: x[1], reverse=True)
+            return [result[0] for result in similar_results[:8 - total_results]]
+
+        # Добавляем похожие результаты для каждой категории
+        if len(results['themes']) < 5:
+            similar_themes = find_similar(
+                Theme.objects.filter(is_active=True),
+                ['title', 'description'],
+                results['themes']
+            )
+            results['themes'] = list(results['themes']) + similar_themes
+
+        if len(results['tickets']) < 5:
+            similar_tickets = find_similar(
+                Ticket.objects.filter(is_active=True),
+                ['title', 'description'],
+                results['tickets']
+            )
+            results['tickets'] = list(results['tickets']) + similar_tickets
+
+        if len(results['questions']) < 5:
+            similar_questions = find_similar(
+                Question.objects.filter(is_active=True),
+                ['text'],
+                results['questions']
+            )
+            results['questions'] = list(results['questions']) + similar_questions
+
+    # Ограничиваем количество результатов если их много
+    MAX_RESULTS_PER_CATEGORY = 10
+    for key in results:
+        if hasattr(results[key], 'count'):
+            results[key] = results[key][:MAX_RESULTS_PER_CATEGORY]
+        elif len(results[key]) > MAX_RESULTS_PER_CATEGORY:
+            results[key] = results[key][:MAX_RESULTS_PER_CATEGORY]
+
+    context = {
+        'query': query,
+        'results': results,
+        'has_results': any(len(results[key]) > 0 for key in results),
+        'total_results': total_results,
+    }
+
+    return render(request, 'medic_card/search_results.html', context)
