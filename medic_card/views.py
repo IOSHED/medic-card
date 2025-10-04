@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
 
@@ -97,7 +98,7 @@ def update_original_ticket_from_temp(user, temp_ticket, temp_progress):
     original_progress.total_questions = original_questions.count()
     original_progress.save()
 
-
+@cache_page(86400 / 4)
 @ratelimit(key="ip", rate="100/h")
 def home(request):
     """Главная страница со списком тем"""
@@ -105,7 +106,7 @@ def home(request):
     context = {"themes": themes}
     return render(request, "medic_card/home.html", context)
 
-
+@cache_page(86400 / 4)
 @ratelimit(key="ip", rate="100/h")
 def theme_detail(request, theme_id):
     """Страница темы со списком билетов"""
@@ -116,7 +117,7 @@ def theme_detail(request, theme_id):
     context = {"theme": theme, "tickets": tickets}
     return render(request, "medic_card/theme_detail.html", context)
 
-
+@cache_page(86400 / 4)
 @ratelimit(key="ip", rate="100/h")
 def ticket_detail(request, ticket_id):
     """Страница билета со списком вопросов"""
