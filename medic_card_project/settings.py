@@ -17,8 +17,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'django.contrib.sites',  # ← обязательно!
-    'django.contrib.sitemaps',  #
+    'django.contrib.sites',
+    'django.contrib.sitemaps',
     "crispy_forms",
     "crispy_bootstrap5",
     "medic_card",
@@ -27,9 +27,9 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # ← добавлено
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -57,11 +57,10 @@ TEMPLATES = [
 ]
 
 UNFOLD = {
-    # Последний пункт, необязателен. Будут доступны все темы для админ-панели
-    "SITE_TITLE": "Медицинские карты",  # Заголовок в браузере
-    "SITE_HEADER": "Админ-панель",  # Заголовок в шапке
-    "SITE_ICON": "/static/icon/main.png",  # Путь к логотипу (SVG/PNG)
-    "THEME": "auto",  # "light", "dark" или "auto" (автоопределение)
+    "SITE_TITLE": "Медицинские карты",
+    "SITE_HEADER": "Админ-панель",
+    "SITE_ICON": "/static/icon/main.png",
+    "THEME": "auto",
 }
 
 WSGI_APPLICATION = "medic_card_project.wsgi.application"
@@ -79,7 +78,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-SESSION_COOKIE_AGE = 1209600  # 14 дней
+SESSION_COOKIE_AGE = 1209600
 
 LANGUAGE_CODE = "ru"
 
@@ -91,6 +90,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # ← добавлено
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
