@@ -6,3 +6,4 @@ crispy-bootstrap5==0.7
 black==23.11.0
 flake8==6.1.0
 isort==5.12.0
+Pillow==11.3.0
