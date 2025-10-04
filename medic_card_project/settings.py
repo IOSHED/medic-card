@@ -3,7 +3,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET")
+SECRET_KEY = os.environ.get("SECRET") or "1234"
 
 DEBUG = False
 
@@ -17,11 +17,16 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.sites',  # ← обязательно!
+    'django.contrib.sitemaps',  #
     "crispy_forms",
     "crispy_bootstrap5",
     "medic_card",
     "medic_auth",
 ]
+
+SITE_ID = 1
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
