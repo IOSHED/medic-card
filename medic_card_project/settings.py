@@ -1,12 +1,13 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-)a)-av^ar1fxs%z=&rd7e6+2-&q(@-c-@s#zf3^sdi$u$3^kil"
+SECRET_KEY = os.environ.get("SECRET")
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0']
 
 INSTALLED_APPS = [
     "unfold",
