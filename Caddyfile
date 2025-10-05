@@ -1,0 +1,4 @@
+test-med.ru {
+    reverse_proxy django:8000
+    file_server /static/*
+}
