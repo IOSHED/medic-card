@@ -1,4 +1,39 @@
 test-med.ru {
-    reverse_proxy django:8000
-    file_server /static/*
+    root * /path/to/your/static/files
+    encode gzip
+
+    # Проксирование на Django приложение
+    reverse_proxy /api/* localhost:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
+    # Для статических файлов и медиа
+    handle_path /static/* {
+        file_server
+    }
+
+    handle_path /media/* {
+        file_server
+    }
+
+    # Основное проксирование
+    reverse_proxy /* localhost:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
+    # Настройки безопасности
+    header {
+        # Базовые security headers
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+    }
 }

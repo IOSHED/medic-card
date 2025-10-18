@@ -14,7 +14,29 @@ else:
     SITE_URL = 'http://localhost:8000'
     DEFAULT_HTTP_PROTOCOL = 'http'
 
-ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0', ".test-med.ru"]
+
+# CSRF настройки для Caddy
+CSRF_TRUSTED_ORIGINS = [
+    'https://test-med.ru',
+    'https://www.test-med.ru',
+    'https://91.218.244.233',
+]
+
+# Настройки для работы за обратным прокси
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# Cookie настройки
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax'  # или 'None' если нужны cross-domain запросы
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Доменные настройки
+CSRF_COOKIE_DOMAIN = '.test-med.ru'  # с точкой в начале для поддоменов
+SESSION_COOKIE_DOMAIN = '.test-med.ru'
 
 INSTALLED_APPS = [
     "unfold",
