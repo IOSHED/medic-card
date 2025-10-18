@@ -15,12 +15,8 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - django_data:/usr/src/app/
 
 networks:
   default:
     driver: bridge
 
-volumes:
-  django_data:
