@@ -16,9 +16,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./db.sqlite3:/usr/src/app/db.sqlite3
-      - .:/usr/src/app
+      - django_data:/usr/src/app/
 
 networks:
   default:
     driver: bridge
+
+volumes:
+  django_data:
