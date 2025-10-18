@@ -1,40 +1,11 @@
+test-med.ru {
+    reverse_proxy http://django:8000 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        header_up Host {host}
 
-test-med.ru, www.test-med.ru {
-    root * /path/to/your/static/files
-    encode gzip
-    
-    # Проксирование на Django приложение
-    reverse_proxy /api/* django:8000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
+        # Без этих заголовков могут быть проблемы с health checks
+        header_down -Server
     }
-    
-    # Для статических файлов и медиа
-    handle_path /static/* {
-        file_server
-    }
-    
-    handle_path /media/* {
-        file_server
-    }
-    
-    # Основное проксирование
-    reverse_proxy /* django:8000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
-    }
-    
-    # Настройки безопасности
-    header {
-        # Базовые security headers
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        X-XSS-Protection "1; mode=block"
-    }
+    file_server /static/*
 }
