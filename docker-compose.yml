@@ -17,6 +17,7 @@ services:
       - "8000:8000"
     volumes:
       - ./db.sqlite3:/usr/src/app/db.sqlite3
+      - .:/usr/src/app
 
 networks:
   default:
