@@ -7,6 +7,13 @@ SECRET_KEY = os.environ.get("SECRET") or "1234"
 
 DEBUG = False
 
+if not DEBUG:
+    SITE_URL = 'https://test-med.ru'
+    DEFAULT_HTTP_PROTOCOL = 'https'
+else:
+    SITE_URL = 'http://localhost:8000'
+    DEFAULT_HTTP_PROTOCOL = 'http'
+
 ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0']
 
 INSTALLED_APPS = [
