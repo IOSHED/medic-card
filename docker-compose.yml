@@ -15,8 +15,12 @@ services:
     build: .
     ports:
       - "8000:8000"
+    volumes:
+      - django:/usr/src/app/db.sqlite3
 
 networks:
   default:
     driver: bridge
 
+volumes:
+  django:

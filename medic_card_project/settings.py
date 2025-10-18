@@ -25,12 +25,17 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Настройки для работы за обратным прокси
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
 # Cookie настройки
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'Lax'  # или 'None' если нужны cross-domain запросы
 SESSION_COOKIE_SAMESITE = 'Lax'
 
