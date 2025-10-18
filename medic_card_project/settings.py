@@ -14,7 +14,7 @@ else:
     SITE_URL = 'http://localhost:8000'
     DEFAULT_HTTP_PROTOCOL = 'http'
 
-ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0', ".test-med.ru"]
+ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0', ".test-med.ru", "django"]
 
 # CSRF настройки для Caddy
 CSRF_TRUSTED_ORIGINS = [
@@ -34,9 +34,9 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'Lax'  # или 'None' если нужны cross-domain запросы
 SESSION_COOKIE_SAMESITE = 'Lax'
 
-# Доменные настройки
-CSRF_COOKIE_DOMAIN = '.test-med.ru'  # с точкой в начале для поддоменов
-SESSION_COOKIE_DOMAIN = '.test-med.ru'
+# # Доменные настройки
+# CSRF_COOKIE_DOMAIN = '.test-med.ru'  # с точкой в начале для поддоменов
+# SESSION_COOKIE_DOMAIN = '.test-med.ru'
 
 INSTALLED_APPS = [
     "unfold",

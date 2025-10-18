@@ -98,7 +98,6 @@ def update_original_ticket_from_temp(user, temp_ticket, temp_progress):
     original_progress.total_questions = original_questions.count()
     original_progress.save()
 
-@cache_page(86400 / 4)
 @ratelimit(key="ip", rate="100/h")
 def home(request):
     """Главная страница со списком тем"""
