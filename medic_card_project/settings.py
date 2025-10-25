@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET") or "1234"
 
-DEBUG = False
+DEBUG = True
 
 if not DEBUG:
     SITE_URL = 'https://test-med.ru'

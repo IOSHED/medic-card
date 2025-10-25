@@ -9,7 +9,7 @@
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{% url 'medic_card:home' %}">Главная</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'medic_card:theme_detail' ticket.theme.id %}">{{ ticket.theme.title }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'medic_card:theme_detail' ticket.themes.first.id %}">{{ ticket.themes.first.title }}</a></li>
                 <li class="breadcrumb-item active" aria-current="page">{{ ticket.title }}</li>
             </ol>
         </nav>

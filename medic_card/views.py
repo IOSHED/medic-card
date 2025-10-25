@@ -110,6 +110,7 @@ def home(request):
 def theme_detail(request, theme_id):
     """Страница темы со списком билетов"""
     theme = get_object_or_404(Theme, id=theme_id, is_active=True)
+    # Исправлено: используем related_name "tickets" из ManyToManyField
     tickets = theme.tickets.filter(is_active=True, is_temporary=False).order_by(
         "order", "created_at"
     )
@@ -170,7 +171,7 @@ def take_question(request, ticket_id, question_index):
 
     # Если это перерешивание (временный билет или сброс прогресса), перемешиваем вопросы
     if (
-        ticket.is_temporary or progress.current_question_index == 0
+            ticket.is_temporary or progress.current_question_index == 0
     ) and not progress.question_order:
         random.shuffle(questions)
         progress.set_questions_order(questions)
@@ -434,12 +435,16 @@ def ticket_result(request, ticket_id):
 
     wrong_answers_count = progress.total_questions - progress.correct_answers
 
+    # Получаем темы билета для отображения
+    themes = ticket.themes.all()
+
     context = {
         "ticket": ticket,
         "progress": progress,
         "user_answers": user_answers,
         "wrong_answers": wrong_answers,
         "wrong_answers_count": wrong_answers_count,
+        "themes": themes,
         "accuracy": (progress.correct_answers / progress.total_questions * 100)
         if progress.total_questions > 0
         else 0,
@@ -508,7 +513,7 @@ def retake_ticket(request, ticket_id, mode="all"):
                 0,
                 profile.mistakes_made
                 - (progress.total_questions - progress.correct_answers),
-            )
+                )
             profile.save()
         except UserProfile.DoesNotExist:
             pass
@@ -521,7 +526,10 @@ def question_detail(request, question_id):
     """Страница вопроса с вариантами ответов"""
     question = get_object_or_404(Question, id=question_id, is_active=True)
     answers = question.answers.filter(is_active=True).order_by("order", "id")
-    context = {"question": question, "answers": answers}
+    # Получаем билет и темы вопроса
+    ticket = question.ticket
+    themes = ticket.themes.all()
+    context = {"question": question, "answers": answers, "ticket": ticket, "themes": themes}
     return render(request, "medic_card/question_detail.html", context)
 
 
@@ -629,8 +637,8 @@ def errors_work(request):
     # Получаем все неправильные ответы пользователя
     wrong_answers = (
         UserAnswer.objects.filter(user=request.user, is_correct=False)
-        .select_related("question", "question__ticket", "question__ticket__theme")
-        .prefetch_related("selected_answers")
+        .select_related("question", "question__ticket")
+        .prefetch_related("selected_answers", "question__ticket__themes")
         .order_by("-answered_at")
     )
 
@@ -641,19 +649,21 @@ def errors_work(request):
     total_errors = wrong_answers.count()
 
     for answer in wrong_answers:
-        theme = answer.question.ticket.theme
+        # Исправлено: получаем все темы билета
+        themes = answer.question.ticket.themes.all()
         ticket = answer.question.ticket
 
-        if theme.id not in errors_by_theme:
-            errors_by_theme[theme.id] = {"theme": theme, "tickets": {}}
+        for theme in themes:
+            if theme.id not in errors_by_theme:
+                errors_by_theme[theme.id] = {"theme": theme, "tickets": {}}
 
-        if ticket.id not in errors_by_theme[theme.id]["tickets"]:
-            errors_by_theme[theme.id]["tickets"][ticket.id] = {
-                "ticket": ticket,
-                "errors": [],
-            }
+            if ticket.id not in errors_by_theme[theme.id]["tickets"]:
+                errors_by_theme[theme.id]["tickets"][ticket.id] = {
+                    "ticket": ticket,
+                    "errors": [],
+                }
 
-        errors_by_theme[theme.id]["tickets"][ticket.id]["errors"].append(answer)
+            errors_by_theme[theme.id]["tickets"][ticket.id]["errors"].append(answer)
 
     # Создаем временный билет со всеми ошибками
     if request.method == "POST" and wrong_answers.exists():
@@ -670,7 +680,6 @@ def errors_work(request):
 
         # Создаем временный билет для работы над ошибками
         temp_ticket = Ticket.objects.create(
-            theme=Theme.objects.first(),
             title="Работа над ошибками",
             description="Временный билет для перерешивания всех ошибок пользователя",
             created_by=request.user,
@@ -678,6 +687,11 @@ def errors_work(request):
             is_temporary=True,
             original_ticket=None,  # Специальный маркер для работы над ошибками
         )
+
+        # Добавляем первую тему из существующих для связи
+        first_theme = Theme.objects.filter(is_active=True).first()
+        if first_theme:
+            temp_ticket.themes.add(first_theme)
 
         # Сохраняем связь между новыми вопросами и оригинальными
         question_mapping = {}
@@ -728,8 +742,8 @@ def errors_work_result(request):
     # Получаем все текущие неправильные ответы пользователя
     current_wrong_answers = (
         UserAnswer.objects.filter(user=request.user, is_correct=False)
-        .select_related("question", "question__ticket", "question__ticket__theme")
-        .prefetch_related("selected_answers")
+        .select_related("question", "question__ticket")
+        .prefetch_related("selected_answers", "question__ticket__themes")
         .order_by("-answered_at")
     )
 
@@ -742,19 +756,21 @@ def errors_work_result(request):
     errors_by_theme = {}
 
     for answer in current_wrong_answers:
-        theme = answer.question.ticket.theme
+        # Исправлено: получаем все темы билета
+        themes = answer.question.ticket.themes.all()
         ticket = answer.question.ticket
 
-        if theme.id not in errors_by_theme:
-            errors_by_theme[theme.id] = {"theme": theme, "tickets": {}}
+        for theme in themes:
+            if theme.id not in errors_by_theme:
+                errors_by_theme[theme.id] = {"theme": theme, "tickets": {}}
 
-        if ticket.id not in errors_by_theme[theme.id]["tickets"]:
-            errors_by_theme[theme.id]["tickets"][ticket.id] = {
-                "ticket": ticket,
-                "errors": [],
-            }
+            if ticket.id not in errors_by_theme[theme.id]["tickets"]:
+                errors_by_theme[theme.id]["tickets"][ticket.id] = {
+                    "ticket": ticket,
+                    "errors": [],
+                }
 
-        errors_by_theme[theme.id]["tickets"][ticket.id]["errors"].append(answer)
+            errors_by_theme[theme.id]["tickets"][ticket.id]["errors"].append(answer)
 
     # Обработка POST-запроса для создания нового билета
     if request.method == "POST" and current_errors_count > 0:
@@ -771,7 +787,6 @@ def errors_work_result(request):
             request.session["initial_errors_count"] = current_errors_count
 
             temp_ticket = Ticket.objects.create(
-                theme=Theme.objects.first(),
                 title="Работа над ошибками",
                 description="Временный билет для перерешивания оставшихся ошибок",
                 created_by=request.user,
@@ -779,6 +794,11 @@ def errors_work_result(request):
                 is_temporary=True,
                 original_ticket=None,
             )
+
+            # Добавляем первую тему из существующих для связи
+            first_theme = Theme.objects.filter(is_active=True).first()
+            if first_theme:
+                temp_ticket.themes.add(first_theme)
 
             # Сохраняем связь между новыми вопросами и оригинальными
             question_mapping = {}
@@ -921,12 +941,12 @@ def search(request):
     tickets_base = Ticket.objects.filter(
         create_search_q(['title', 'description'], query_lower),
         is_active=True
-    ).select_related('theme', 'created_by').distinct()
+    ).prefetch_related('themes').select_related('created_by').distinct()
 
     questions_base = Question.objects.filter(
         create_search_q(['text'], query_lower),
         is_active=True
-    ).select_related('ticket', 'ticket__theme', 'created_by').distinct()
+    ).select_related('ticket', 'created_by').prefetch_related('ticket__themes').distinct()
 
     # Аннотация релевантности
     results['themes'] = annotate_relevance(themes_base, ['title', 'description'], query_lower)

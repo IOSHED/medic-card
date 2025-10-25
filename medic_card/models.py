@@ -77,8 +77,11 @@ class Theme(models.Model):
 class Ticket(models.Model):
     """Модель билета - может создавать только персонал"""
 
-    theme = models.ForeignKey(
-        Theme, on_delete=models.CASCADE, related_name="tickets", verbose_name="Тема"
+    themes = models.ManyToManyField(
+        Theme,
+        related_name="tickets",
+        verbose_name="Темы",
+        blank=False
     )
     title = models.CharField(max_length=200, verbose_name="Название билета")
     description = models.TextField(blank=True, verbose_name="Описание")
@@ -106,7 +109,11 @@ class Ticket(models.Model):
         ordering = ["order", "created_at"]
 
     def __str__(self):
-        return f"{self.theme.title} - {self.title}"
+        # Исправлено для связи многие-ко-многим
+        theme_titles = ", ".join([theme.title for theme in self.themes.all()[:3]])
+        if self.themes.count() > 3:
+            theme_titles += "..."
+        return f"{self.title} ({theme_titles})"
 
     def get_questions_count(self):
         return self.questions.filter(is_active=True).count()
@@ -158,9 +165,7 @@ class Ticket(models.Model):
         if not wrong_questions.exists():
             return None
 
-        # Создаем временный билет
         temp_ticket = Ticket.objects.create(
-            theme=self.theme,
             title=f"{self.title} - Перерешивание ошибок",
             description=f"Временный билет для перерешивания ошибок из билета '{self.title}'",
             created_by=user,
@@ -169,7 +174,8 @@ class Ticket(models.Model):
             original_ticket=self,
         )
 
-        # Копируем только неправильные вопросы
+        temp_ticket.themes.set(self.themes.all())
+
         for question in wrong_questions:
             new_question = Question.objects.create(
                 ticket=temp_ticket,
@@ -190,6 +196,10 @@ class Ticket(models.Model):
                 )
 
         return temp_ticket
+
+    def get_themes_display(self):
+        """Возвращает строку с названиями тем для отображения"""
+        return ", ".join([theme.title for theme in self.themes.all()])
 
 
 class Question(models.Model):
