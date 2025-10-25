@@ -1,7 +1,11 @@
 test-med.ru {
-    handle_path /media/* {
-        root * /srv/media
+    handle_path /static/* {
+        root * /srv/static
         file_server
+    }
+
+    handle_path /media/* {
+        reverse_proxy django:8000
     }
 
     reverse_proxy django:8000 {
@@ -12,5 +16,4 @@ test-med.ru {
         # Без этих заголовков могут быть проблемы с health checks
         header_down -Server
     }
-    file_server /static/*
 }
