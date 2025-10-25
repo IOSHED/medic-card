@@ -105,7 +105,6 @@ def home(request):
     context = {"themes": themes}
     return render(request, "medic_card/home.html", context)
 
-@cache_page(86400 / 4)
 @ratelimit(key="ip", rate="100/h")
 def theme_detail(request, theme_id):
     """Страница темы со списком билетов"""
@@ -117,7 +116,6 @@ def theme_detail(request, theme_id):
     context = {"theme": theme, "tickets": tickets}
     return render(request, "medic_card/theme_detail.html", context)
 
-@cache_page(86400 / 4)
 @ratelimit(key="ip", rate="100/h")
 def ticket_detail(request, ticket_id):
     """Страница билета со списком вопросов"""
