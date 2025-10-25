@@ -16,7 +16,12 @@ services:
     build: .
     ports:
       - "8000:8000"
+    volumes:
+      - db_lite:/usr/src/app/
 
 networks:
   default:
     driver: bridge
+
+volumes:
+  db_lite:
