@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET") or "1234"
 
-DEBUG = True
+DEBUG = False
 
 if not DEBUG:
     SITE_URL = 'https://test-med.ru'
@@ -127,7 +127,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"  # ← добавлено
 
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# MEDIA_ROOT = BASE_DIR / "media"
+# MEDIA_URL = '/media/'
+MEDIA_ROOT = '/srv/media'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
