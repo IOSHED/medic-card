@@ -5,8 +5,7 @@ test-med.ru {
     }
 
     handle_path /media/* {
-        root * /srv/media
-        file_server
+        reverse_proxy django:8000
     }
 
     reverse_proxy django:8000 {
