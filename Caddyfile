@@ -1,4 +1,9 @@
 test-med.ru {
+    handle_path /media/* {
+        root * /srv/media
+        file_server
+    }
+
     reverse_proxy django:8000 {
         header_up X-Forwarded-Proto {scheme}
         header_up X-Forwarded-Host {host}

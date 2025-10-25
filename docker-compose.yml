@@ -8,6 +8,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./static:/srv/static
+      - ./media:/srv/media
     depends_on:
       - django
 
