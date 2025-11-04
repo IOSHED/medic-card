@@ -17,7 +17,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - db_lite:/usr/src/app/
+      - db_lite:/usr/src/app/db.sqlite3
 
 networks:
   default:
