@@ -227,6 +227,15 @@ class Question(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок сортировки")
+    original_question = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        default=None,
+        related_name='question_copies',
+        verbose_name="Оригинальный вопрос"
+    )
 
     class Meta:
         verbose_name = "Вопрос"
