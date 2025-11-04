@@ -14,8 +14,8 @@ from .models import Answer, Question, Theme, Ticket, TicketProgress, UserAnswer,
 # ФОРМЫ
 # ============================================================================
 
-class QuestionForm(forms.ModelForm):
-    """Форма для вопроса с поддержкой множественного выбора билетов"""
+class QuestionCreateForm(forms.ModelForm):
+    """Форма для СОЗДАНИЯ вопроса с поддержкой множественного выбора билетов"""
     tickets = forms.ModelMultipleChoiceField(
         queryset=Ticket.objects.filter(is_active=True),
         required=True,
@@ -25,17 +25,15 @@ class QuestionForm(forms.ModelForm):
 
     class Meta:
         model = Question
-        fields = ['tickets', 'text', 'image', 'is_active', 'order']
+        fields = ['text', 'image', 'is_active', 'order']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Если редактируем существующий вопрос, показываем текущий билет в множественном выборе
-        if self.instance and self.instance.pk:
-            self.fields['tickets'].initial = [self.instance.ticket]
 
-    def save(self, commit=True):
-        # Сохраняем вопрос только если commit=False, иначе обрабатываем в admin
-        return super().save(commit=commit)
+class QuestionEditForm(forms.ModelForm):
+    """Форма для РЕДАКТИРОВАНИЯ существующего вопроса"""
+
+    class Meta:
+        model = Question
+        fields = ['text', 'image', 'is_active', 'order']
 
 
 # ============================================================================
@@ -45,8 +43,8 @@ class QuestionForm(forms.ModelForm):
 class AnswerInline(TabularInline):
     """Inline для создания ответов при создании/редактировании вопроса"""
     model = Answer
-    extra = 4  # Показываем 4 пустых формы для новых ответов
-    min_num = 2  # Минимум 2 ответа обязательны
+    extra = 4
+    min_num = 2
     fields = ["text", "is_correct", "is_active", "order"]
     classes = ['collapse']
     verbose_name = "Ответ"
@@ -63,7 +61,7 @@ class AnswerInline(TabularInline):
 
 class TicketInline(TabularInline):
     """Inline для отображения билетов в теме"""
-    model = Ticket.themes.through  # Используем промежуточную модель
+    model = Ticket.themes.through
     extra = 1
     verbose_name = "Билет"
     verbose_name_plural = "Билеты в этой теме"
@@ -73,7 +71,7 @@ class TicketInline(TabularInline):
 
 class ThemeInline(TabularInline):
     """Inline для отображения тем в билете"""
-    model = Ticket.themes.through  # Используем промежуточную модель
+    model = Ticket.themes.through
     extra = 1
     verbose_name = "Тема"
     verbose_name_plural = "Темы билета"
@@ -86,7 +84,7 @@ class QuestionCloneInline(TabularInline):
     model = Question
     extra = 0
     can_delete = False
-    readonly_fields = ['ticket', 'text_preview', 'is_active']
+    readonly_fields = ['ticket', 'text_preview', 'is_active', 'created_at']
     verbose_name = "Копия вопроса"
     verbose_name_plural = "Копии этого вопроса в других билетах"
     classes = ['collapse']
@@ -100,6 +98,13 @@ class QuestionCloneInline(TabularInline):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    def get_queryset(self, request):
+        # Показываем только копии этого вопроса
+        qs = super().get_queryset(request)
+        if hasattr(self, 'parent_object') and self.parent_object:
+            return qs.filter(original_question=self.parent_object)
+        return qs.none()
 
 
 # ============================================================================
@@ -195,7 +200,6 @@ class TicketAdmin(ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(ModelAdmin):
-    form = QuestionForm
     list_display = [
         "text_preview",
         "ticket",
@@ -209,36 +213,63 @@ class QuestionAdmin(ModelAdmin):
     ]
     list_filter = ["is_active", "created_at", "ticket__themes", "created_by", "original_question"]
     search_fields = ["text", "ticket__title", "ticket__themes__title"]
-    readonly_fields = ["created_at", "created_by", "original_question"]
+    readonly_fields = ["created_at", "created_by", "original_question", "ticket"]
     inlines = [AnswerInline, QuestionCloneInline]
 
-    # Добавляем кастомные действия
     actions = ['clone_questions_to_tickets']
 
-    fieldsets = (
-        ("Основная информация", {
-            "fields": ("tickets", "text", "image", "is_active", "order"),
-            "description": "Выберите один или несколько билетов. Для каждого билета будет создана копия вопроса."
-        }),
-        ("Информация о клонировании", {
-            "fields": ("original_question",),
-            "classes": ["collapse"],
-            "description": "Если этот вопрос является копией, здесь будет указан оригинал"
-        }),
-        ("Служебная информация", {
-            "fields": ("created_at", "created_by"),
-            "classes": ["collapse"]
-        }),
-    )
-
     def get_form(self, request, obj=None, **kwargs):
-        """Скрываем поле tickets при редактировании существующего вопроса"""
-        form = super().get_form(request, obj, **kwargs)
-        if obj and obj.pk:
-            # При редактировании скрываем множественный выбор билетов
-            form.base_fields['tickets'].widget = forms.HiddenInput()
-            form.base_fields['tickets'].required = False
-        return form
+        """
+        Используем разные формы для создания и редактирования
+        """
+        if obj is None:
+            # СОЗДАНИЕ нового вопроса
+            kwargs['form'] = QuestionCreateForm
+        else:
+            # РЕДАКТИРОВАНИЕ существующего вопроса
+            kwargs['form'] = QuestionEditForm
+
+        return super().get_form(request, obj, **kwargs)
+
+    def get_fieldsets(self, request, obj=None):
+        """
+        Разные fieldsets для создания и редактирования
+        """
+        if obj is None:
+            # СОЗДАНИЕ - показываем поле tickets
+            return (
+                ("Основная информация", {
+                    "fields": ("tickets", "text", "image", "is_active", "order"),
+                    "description": "Выберите один или несколько билетов. Для каждого билета будет создана копия вопроса."
+                }),
+            )
+        else:
+            # РЕДАКТИРОВАНИЕ - показываем обычные поля + информацию о клонировании
+            return (
+                ("Основная информация", {
+                    "fields": ("ticket", "text", "image", "is_active", "order"),
+                    "description": "Редактирование вопроса. Изменения применятся ко всем копиям этого вопроса."
+                }),
+                ("Информация о клонировании", {
+                    "fields": ("original_question",),
+                    "classes": ["collapse"],
+                    "description": "Если этот вопрос является копией, здесь будет указан оригинал"
+                }),
+                ("Служебная информация", {
+                    "fields": ("created_at", "created_by"),
+                    "classes": ["collapse"]
+                }),
+            )
+
+    def get_inline_instances(self, request, obj=None):
+        """
+        Передаем parent_object в inline для правильного отображения копий
+        """
+        inline_instances = super().get_inline_instances(request, obj)
+        for inline in inline_instances:
+            if isinstance(inline, QuestionCloneInline):
+                inline.parent_object = obj
+        return inline_instances
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('ticket', 'created_by', 'original_question').prefetch_related('ticket__themes', 'answers')
@@ -247,14 +278,14 @@ class QuestionAdmin(ModelAdmin):
         """Обрабатываем сохранение вопроса с множественными билетами"""
 
         if not change:
-            # СОЗДАНИЕ НОВОГО ВОПРОСА
+            # ========== СОЗДАНИЕ НОВОГО ВОПРОСА ==========
             tickets = form.cleaned_data.get('tickets', [])
 
             if not tickets:
                 messages.error(request, "Необходимо выбрать хотя бы один билет")
                 return
 
-            # Создаем вопрос для первого билета
+            # Создаем вопрос для первого билета (это будет оригинал)
             first_ticket = tickets[0]
             obj.ticket = first_ticket
             obj.created_by = request.user
@@ -269,16 +300,12 @@ class QuestionAdmin(ModelAdmin):
                     self._create_question_copy(obj, ticket, request.user)
                     created_copies += 1
 
-                if created_copies > 0:
-                    messages.success(request, f"Создан вопрос и {created_copies} копий в других билетах")
-                else:
-                    messages.success(request, "Вопрос успешно создан")
+                messages.success(request, f"Создан вопрос и {created_copies} копий в других билетах")
             else:
                 messages.success(request, "Вопрос успешно создан")
 
         else:
-            # РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕГО ВОПРОСА
-            # Обновляем только текущий вопрос
+            # ========== РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕГО ВОПРОСА ==========
             if not obj.created_by:
                 obj.created_by = request.user
             super().save_model(request, obj, form, change)
@@ -286,12 +313,17 @@ class QuestionAdmin(ModelAdmin):
             # Также обновляем все копии этого вопроса
             if obj.original_question is None:  # Это оригинальный вопрос
                 copies = Question.objects.filter(original_question=obj)
+                update_count = 0
                 for copy in copies:
                     copy.text = obj.text
                     copy.image = obj.image
                     copy.is_active = obj.is_active
                     copy.order = obj.order
                     copy.save()
+                    update_count += 1
+
+                if update_count > 0:
+                    messages.info(request, f"Обновлено {update_count} копий этого вопроса")
 
     def _create_question_copy(self, original_question, ticket, user):
         """Создает копию вопроса для указанного билета"""
@@ -321,9 +353,14 @@ class QuestionAdmin(ModelAdmin):
     @display(description="Клон")
     def is_clone_display(self, obj):
         if obj.original_question:
-            return "✅ Копия"
+            return format_html(
+                '✅ Копия (<a href="{}">{}</a>)',
+                f'../question/{obj.original_question.id}/change/',
+                obj.original_question.text[:50] + "..." if len(obj.original_question.text) > 50 else obj.original_question.text
+            )
         elif obj.question_copies.exists():
-            return "📖 Оригинал"
+            copy_count = obj.question_copies.count()
+            return format_html('📖 Оригинал ({} копий)', copy_count)
         return "—"
 
     @display(description="Текст вопроса")
@@ -380,15 +417,6 @@ class QuestionAdmin(ModelAdmin):
             'action': 'clone_questions_to_tickets'
         }
         return TemplateResponse(request, 'admin/clone_questions.html', context)
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        actions['clone_questions_to_tickets'] = (
-            QuestionAdmin.clone_questions_to_tickets,
-            'clone_questions_to_tickets',
-            "📋 Клонировать выбранные вопросы в другие билеты"
-        )
-        return actions
 
 
 @admin.register(Answer)
