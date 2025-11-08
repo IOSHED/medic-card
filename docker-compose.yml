@@ -6,9 +6,11 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./staticfiles:/srv/static
-      - ./media:/srv/media
+        - ./Caddyfile:/etc/caddy/Caddyfile
+        - ./staticfiles:/srv/static  # ДОЛЖНО СОВПАДАТЬ с Caddyfile
+        - ./media:/srv/media
+        - caddy_data:/data           # для SSL сертификатов
+        - caddy_config:/config
     depends_on:
       - django
 
@@ -24,4 +26,6 @@ networks:
     driver: bridge
 
 volumes:
+  caddy_data:
+  caddy_config:
   db_lite:

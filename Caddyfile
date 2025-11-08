@@ -1,28 +1,28 @@
 test-med.ru {
+# ACME challenge для SSL - ДОЛЖНО БЫТЬ ПЕРВЫМ!
+    @acme {
+              path /.well-known/acme-challenge/*
+          }
+    handle @acme {
+                     root * /srv/static/.well-known/acme-challenge
+                     file_server
+                 }
+
 # Статика
-    handle_path /static/* {
-                              root * /srv/static
-                              file_server
-                          }
+    handle /static/* {
+                         root * /srv/static
+                         file_server
+                     }
 
-# Медиа файлы
-    handle_path /media/* {
-                             root * /srv/media
-                             file_server
-                         }
+# Медиа
+    handle /media/* {
+                        root * /srv/media
+                        file_server
+                    }
 
-# Django
-    @notStatic {
-                   not path /static/*
-                   not path /media/*
-               }
-    handle @notStatic {
-                          reverse_proxy django:8000 {
-                                                        header_up X-Forwarded-Proto {scheme}
-                                                        header_up X-Forwarded-Host {host}
-                                                        header_up Host {host}
-                                                        header_up X-Real-IP {remote}
-                                                        header_up X-Forwarded-For {remote}
-                                                    }
-                      }
+# Все остальное - в Django
+    reverse_proxy django:8000 {
+                                  header_up X-Forwarded-Proto {scheme}
+                                  header_up X-Forwarded-Host {host}
+                              }
 }
