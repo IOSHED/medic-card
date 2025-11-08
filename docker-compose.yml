@@ -7,7 +7,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./static:/srv/static
+      - ./staticfiles:/srv/static
       - ./media:/srv/media
     depends_on:
       - django
