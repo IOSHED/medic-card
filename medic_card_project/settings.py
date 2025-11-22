@@ -37,9 +37,6 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-USE_X_FORWARDED_HOST = True
-USE_X_FORWARDED_PORT = True
-
 # Cookie настройки
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
@@ -123,25 +120,9 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Настройки статических файлов
 STATIC_URL = '/static/'
-STATIC_ROOT = '/srv/static'
-
-# В development добавляем локальные статические файлы
-if DEBUG:
-    STATICFILES_DIRS = [BASE_DIR / "static"]
-else:
-    STATICFILES_DIRS = []
-
-# Настройки медиа файлов
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = '/srv/media'
-
-# WhiteNoise для обслуживания статики в production
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
-CRISPY_TEMPLATE_PACK = "bootstrap5"
+MEDIA_ROOT = BASE_DIR / 'media'

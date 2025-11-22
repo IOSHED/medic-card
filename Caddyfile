@@ -1,28 +1,19 @@
 test-med.ru {
-# ACME challenge для SSL
-    @acme {
-              path /.well-known/acme-challenge/*
-          }
-    handle @acme {
-                     root * /srv/static/.well-known/acme-challenge
-                     file_server
-                 }
 
-# Статические файлы
-    handle /static/* {
-                         root * /srv/static
-                         file_server
-                         header Cache-Control "public, max-age=31536000"
-                     }
+    handle_path /static/* {
+                              root * /staticfiles/
+                              file_server
+                          }
 
-# Медиа файлы
-    handle /media/* {
-                        root * /srv/media
-                        file_server
-                        header Cache-Control "public, max-age=3600"
-                    }
+    handle_path /media/* {
+                             root * /media/
+                             file_server
+                         }
 
-# Все остальное - в Django
+    @notStatic {
+                   not path /static/* /media/*
+               }
+
     handle {
                reverse_proxy django:8000
            }
