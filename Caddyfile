@@ -1,5 +1,11 @@
 test-med.ru {
-# ACME challenge для SSL - ДОЛЖНО БЫТЬ ПЕРВЫМ!
+# Редирект http -> https
+    @http {
+              protocol http
+          }
+    redir @http https://{host}{uri} permanent
+
+# ACME challenge для SSL
     @acme {
               path /.well-known/acme-challenge/*
           }
@@ -8,21 +14,30 @@ test-med.ru {
                      file_server
                  }
 
-# Статика
+# Статические файлы
     handle /static/* {
                          root * /srv/static
                          file_server
+                         header Cache-Control "public, max-age=31536000"
                      }
 
-# Медиа
+# Медиа файлы
     handle /media/* {
                         root * /srv/media
                         file_server
+                        header Cache-Control "public, max-age=3600"
                     }
 
 # Все остальное - в Django
-    reverse_proxy django:8000 {
-                                  header_up X-Forwarded-Proto {scheme}
-                                  header_up X-Forwarded-Host {host}
-                              }
+    handle {
+               reverse_proxy django:8000 {
+                                             header_up X-Forwarded-Proto {scheme}
+                                             header_up X-Forwarded-Host {host}
+                                             header_up X-Real-IP {remote}
+                                         }
+           }
+}
+
+www.test-med.ru {
+    redir https://test-med.ru{uri} permanent
 }

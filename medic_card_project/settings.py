@@ -5,16 +5,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET") or "1234"
 
-DEBUG = True
+DEBUG = False
 
+# Настройки сайта
 if not DEBUG:
     SITE_URL = 'https://test-med.ru'
     DEFAULT_HTTP_PROTOCOL = 'https'
+    ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', '.test-med.ru', "django", 'localhost', '127.0.0.1', '0.0.0.0']
 else:
     SITE_URL = 'http://localhost:8000'
     DEFAULT_HTTP_PROTOCOL = 'http'
-
-ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0', ".test-med.ru", "django"]
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 # CSRF настройки для Caddy
 CSRF_TRUSTED_ORIGINS = [
@@ -26,22 +27,22 @@ CSRF_TRUSTED_ORIGINS = [
 # Настройки для работы за обратным прокси
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# В production включаем безопасные настройки
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
 # Cookie настройки
-# CSRF_COOKIE_SECURE = True
-# SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'Lax'  # или 'None' если нужны cross-domain запросы
+CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
-
-# # Доменные настройки
-# CSRF_COOKIE_DOMAIN = '.test-med.ru'  # с точкой в начале для поддоменов
-# SESSION_COOKIE_DOMAIN = '.test-med.ru'
 
 INSTALLED_APPS = [
     "unfold",
@@ -63,7 +64,7 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # ← добавлено
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -122,21 +123,23 @@ USE_I18N = True
 
 USE_TZ = True
 
-# STATIC_URL = "/static/"
-# STATICFILES_DIRS = [BASE_DIR / "static"]
-# STATIC_ROOT = BASE_DIR / "staticfiles"  # ← добавлено
-#
-# MEDIA_URL = "/media/"
-# MEDIA_ROOT = BASE_DIR / "media"
-# MEDIA_URL = '/media/'
-# MEDIA_ROOT = '/srv/media'
-
+# Настройки статических файлов
 STATIC_URL = '/static/'
-STATIC_ROOT = '/srv/static'  # Должно совпадать с Caddy
-STATICFILES_DIRS = []  # Пусто в production
+STATIC_ROOT = '/srv/static'
 
+# В development добавляем локальные статические файлы
+if DEBUG:
+    STATICFILES_DIRS = [BASE_DIR / "static"]
+else:
+    STATICFILES_DIRS = []
+
+# Настройки медиа файлов
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/srv/media'
+
+# WhiteNoise для обслуживания статики в production
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
