@@ -7,15 +7,14 @@ SECRET_KEY = os.environ.get("SECRET") or "1234"
 
 DEBUG = False
 
-# Настройки сайта
 if not DEBUG:
     SITE_URL = 'https://test-med.ru'
     DEFAULT_HTTP_PROTOCOL = 'https'
-    ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', '.test-med.ru', "django", "localhost", "127.0.0.1",  '0.0.0.0', ]
 else:
     SITE_URL = 'http://localhost:8000'
     DEFAULT_HTTP_PROTOCOL = 'http'
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'django']
+
+ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', 'localhost', '127.0.0.1', '0.0.0.0', ".test-med.ru", "django"]
 
 # CSRF настройки для Caddy
 CSRF_TRUSTED_ORIGINS = [
@@ -27,19 +26,22 @@ CSRF_TRUSTED_ORIGINS = [
 # Настройки для работы за обратным прокси
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# В production включаем безопасные настройки
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-else:
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # Cookie настройки
-CSRF_COOKIE_SAMESITE = 'Lax'
+# CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax'  # или 'None' если нужны cross-domain запросы
 SESSION_COOKIE_SAMESITE = 'Lax'
+
+# # Доменные настройки
+# CSRF_COOKIE_DOMAIN = '.test-med.ru'  # с точкой в начале для поддоменов
+# SESSION_COOKIE_DOMAIN = '.test-med.ru'
 
 INSTALLED_APPS = [
     "unfold",
@@ -61,7 +63,7 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # ← добавлено
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -100,7 +102,7 @@ WSGI_APPLICATION = "medic_card_project.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db/db.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -120,9 +122,14 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # ← добавлено
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"

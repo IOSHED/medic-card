@@ -1,20 +1,12 @@
 test-med.ru {
+    reverse_proxy django:8000 {
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Forwarded-Host {host}
+      header_up Host {host}
 
-    handle_path /static/* {
-                              root * /staticfiles/
-                              file_server
-                          }
-
-    handle_path /media/* {
-                             root * /media/
-                             file_server
-                         }
-
-    @notStatic {
-                   not path /static/* /media/*
-               }
-
-    handle {
-               reverse_proxy django:8000
-           }
+  # Без этих заголовков могут быть проблемы с health checks
+      header_down -Server
+    }
+    file_server /static/*
+    file_server /media/*
 }
