@@ -77,9 +77,7 @@ class QuestionSitemap(Sitemap):
     def items(self):
         return Question.objects.filter(
             is_active=True,
-            ticket__is_active=True,
-            ticket__is_temporary=False
-        ).select_related('ticket', 'ticket__theme')
+        )
 
     def lastmod(self, obj):
         return obj.created_at
