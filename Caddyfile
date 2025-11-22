@@ -1,10 +1,4 @@
 test-med.ru {
-# Редирект http -> https
-    @http {
-              protocol http
-          }
-    redir @http https://{host}{uri} permanent
-
 # ACME challenge для SSL
     @acme {
               path /.well-known/acme-challenge/*
@@ -30,14 +24,6 @@ test-med.ru {
 
 # Все остальное - в Django
     handle {
-               reverse_proxy django:8000 {
-                                             header_up X-Forwarded-Proto {scheme}
-                                             header_up X-Forwarded-Host {host}
-                                             header_up X-Real-IP {remote}
-                                         }
+               reverse_proxy django:8000
            }
-}
-
-www.test-med.ru {
-    redir https://test-med.ru{uri} permanent
 }

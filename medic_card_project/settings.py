@@ -11,11 +11,11 @@ DEBUG = False
 if not DEBUG:
     SITE_URL = 'https://test-med.ru'
     DEFAULT_HTTP_PROTOCOL = 'https'
-    ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', '.test-med.ru', "django", 'localhost', '127.0.0.1', '0.0.0.0']
+    ALLOWED_HOSTS = ['91.218.244.233', 'test-med.ru', '.test-med.ru', "django", "localhost", "127.0.0.1",  '0.0.0.0', ]
 else:
     SITE_URL = 'http://localhost:8000'
     DEFAULT_HTTP_PROTOCOL = 'http'
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'django']
 
 # CSRF настройки для Caddy
 CSRF_TRUSTED_ORIGINS = [
